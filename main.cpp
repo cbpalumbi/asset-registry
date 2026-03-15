@@ -1,9 +1,11 @@
 ﻿#include <iostream>
 #include <filesystem>
+namespace fs = std::filesystem;
 
-bool isValidPath(std::string path) {
+bool isValidPath(const std::string& pathStr) {
+    fs::path p(pathStr);
 
-    if (path == "hello") {
+    if (fs::exists(p)) {
         return true;
     }
 
