@@ -1,6 +1,11 @@
-﻿#include <iostream>
+﻿#include "Registry.h"
+
+#include <iostream>
 #include <filesystem>
+#include <memory>
 namespace fs = std::filesystem;
+
+
 const std::string ASSETS_DIR = "C:/Users/Bella/CLionProjects/AssetRegistry/assets";
 
 bool isValidPath(const fs::path& p) {
@@ -8,6 +13,8 @@ bool isValidPath(const fs::path& p) {
 }
 
 int main() {
+
+    auto registry = std::make_unique<Registry>();
 
     std::cout << "Assets dir: " << ASSETS_DIR << "\n";
 

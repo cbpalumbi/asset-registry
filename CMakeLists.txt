@@ -10,4 +10,8 @@ else()
     add_compile_options(-Wall -Wextra)
 endif()
 
-add_executable(AssetRegistry main.cpp)
+add_executable(AssetRegistry main.cpp
+        Registry.cpp
+        Registry.h
+        AssetEntry.cpp
+        AssetEntry.h)
