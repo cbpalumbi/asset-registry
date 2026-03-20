@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <vector>
 #include <filesystem>
+#include <unordered_map>
 
 namespace fs = std::filesystem;
 
@@ -17,9 +18,10 @@ public:
 private:
 
     const uint32_t cacheCapacity = 2048; // 2 KB for now
-    std::vector<std::shared_ptr<AssetEntry>> entries;
 
+    std::unordered_map<fs::path, std::shared_ptr<AssetEntry>> entries;
 
+    bool LoadIntoCache(fs::path const &path);
 };
 
 

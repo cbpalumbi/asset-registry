@@ -13,11 +13,11 @@ class AssetEntry : public std::enable_shared_from_this<AssetEntry> {
     std::unordered_map<uint32_t, std::weak_ptr<AssetRef>> refs;
     timestamp lastRefFreedAt;
     std::unique_ptr<std::byte[]> memPtr;
-    uint32_t assetSize{};
+    uint32_t assetSize;
     int16_t numRefsLifetime;
 
-    AssetEntry();
 public:
+    AssetEntry();
     std::shared_ptr<AssetRef> createRef();
     void freeRef(uint32_t refId);
     std::chrono::duration<double> getTimeSinceLastRefFreed() const;

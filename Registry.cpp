@@ -9,8 +9,12 @@ Registry::Registry() {
 
 bool Registry::Load(fs::path const &path) {
 
-    // validate path
     // check if asset is in cache
+    const bool assetIsInCache = false;
+
+    if (!assetIsInCache) {
+        LoadIntoCache(path);
+    }
 
     // if not, check if it can fit in the cache
         // if there is space, great
@@ -27,4 +31,14 @@ bool Registry::Load(fs::path const &path) {
 
 uint32_t Registry::GetCurrentUsage() {
     return 4;
+}
+
+bool Registry::LoadIntoCache(fs::path const &path) {
+    if (entries.contains(path)) {
+        // update entry
+        return false;
+    }
+    // create a new AssetEntry
+    // TODO: make the ctor for AssetEntry. load the file in with a stream and pass the mem_ptr correctly
+    entries.insert({path, std::make_shared<AssetEntry>()});
 }

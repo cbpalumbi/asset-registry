@@ -28,6 +28,8 @@ int main() {
 
         if (isValidPath(p)) {
             std::cout << "File '" << input << "' EXISTS at path " << p << "\n";
+            const bool success = registry->Load(p);
+            std::cout << "Load succeeded: " << success << "\n";
         } else {
             std::cout << "File '" << input << "' does not exist at path " << p << "\n";
         }

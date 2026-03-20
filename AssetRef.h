@@ -2,7 +2,6 @@
 #define ASSETREGISTRY_ASSETREF_H
 
 #include <memory>
-class AssetEntry;
 
 class AssetRef {
     friend class AssetEntry;
