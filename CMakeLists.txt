@@ -14,4 +14,6 @@ add_executable(AssetRegistry main.cpp
         Registry.cpp
         Registry.h
         AssetEntry.cpp
-        AssetEntry.h)
+        AssetEntry.h
+        AssetRef.cpp
+        AssetRef.h)

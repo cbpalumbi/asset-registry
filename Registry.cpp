@@ -1,6 +1,30 @@
 ﻿#include "Registry.h"
 
+#include <iostream>
+
 Registry::Registry() {
     std::cout << "Registry created\n";
     std::cout << "Num entries: " << entries.size() << "\n";
+}
+
+bool Registry::Load(fs::path const &path) {
+
+    // validate path
+    // check if asset is in cache
+
+    // if not, check if it can fit in the cache
+        // if there is space, great
+        // load the item into the cache
+    // if not, check if it's possible to evict enough assets so that there will be room for it
+        // if yes, great
+            // for the evicted assets, follow the AssetEntry to their AssetRefs and invalidate them. then copy the AssetEntry's mem_ptr into a temp var. then set mem_ptr to nullptr. then free the memory using the temp ptr.
+            // load the new asset into memory. create or update the AssetEntry for it, including creating a new AssetRef and
+            // return true, AssetRef*.
+        // if not, return false
+
+    return true;
+}
+
+uint32_t Registry::GetCurrentUsage() {
+    return 4;
 }

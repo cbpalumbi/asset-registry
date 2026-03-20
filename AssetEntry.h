@@ -1,14 +1,26 @@
 ﻿#ifndef ASSETREGISTRY_ASSETENTRY_H
 #define ASSETREGISTRY_ASSETENTRY_H
+
 #include <cstdint>
+#include <memory>
+#include <chrono>
+#include <unordered_map>
 
+using timestamp = std::chrono::time_point<std::chrono::system_clock>;
+class AssetRef;
 
-class AssetEntry {
-    const uint8_t myNum;
-    AssetEntry(const uint8_t t) : myNum(t) {}
+class AssetEntry : public std::enable_shared_from_this<AssetEntry> {
+    std::unordered_map<uint32_t, std::weak_ptr<AssetRef>> refs;
+    timestamp lastRefFreedAt;
+    std::unique_ptr<std::byte[]> memPtr;
+    uint32_t assetSize{};
+    int16_t numRefsLifetime;
 
+    AssetEntry();
 public:
-    uint8_t get() const { return myNum; }
+    std::shared_ptr<AssetRef> createRef();
+    void freeRef(uint32_t refId);
+    std::chrono::duration<double> getTimeSinceLastRefFreed() const;
 
 };
 
