@@ -17,7 +17,7 @@ class AssetEntry : public std::enable_shared_from_this<AssetEntry> {
     int16_t numRefsLifetime;
 
 public:
-    AssetEntry();
+    AssetEntry(std::unique_ptr<std::byte[]> memPtr, uint32_t assetSize);
     std::shared_ptr<AssetRef> createRef();
     void freeRef(uint32_t refId);
     std::chrono::duration<double> getTimeSinceLastRefFreed() const;

@@ -44,8 +44,7 @@ bool Registry::LoadIntoCache(fs::path const &path) {
     auto fileSize = std::filesystem::file_size(path);
     std::cout << "Filesize is " << fileSize << "\n";
 
-    // open the file
-
+    // open the file with a flag specifying mode as binary
     std::ifstream stream;
     stream.open(path, std::ios::binary);
     if (stream.fail()) {
@@ -57,14 +56,10 @@ bool Registry::LoadIntoCache(fs::path const &path) {
 
     // stream.read expects a char* to destination location. need to cast
     stream.read(reinterpret_cast<char*>(memPtr.get()), fileSize);
-    std:: cout << stream.gcount() << "\n";
-
     stream.close();
 
-
     // create a new AssetEntry
+    auto entry = std::make_shared<AssetEntry>(std::move(memPtr), fileSize);
 
-
-
-    entries.insert({path, std::make_shared<AssetEntry>()});
+    entries.insert({path, entry});
 }

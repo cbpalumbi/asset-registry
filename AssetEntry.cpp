@@ -1,7 +1,9 @@
 ﻿#include "AssetEntry.h"
 #include "AssetRef.h"
 
-AssetEntry::AssetEntry() {
+
+AssetEntry::AssetEntry(std::unique_ptr<std::byte[]> memPtr, const uint32_t assetSize)
+    : memPtr(std::move(memPtr)), assetSize(assetSize), numRefsLifetime(0) {
 }
 
 std::shared_ptr<AssetRef> AssetEntry::createRef() {
