@@ -1,6 +1,7 @@
 ﻿#include "AssetEntry.h"
 #include "AssetRef.h"
 
+#include <iostream>
 
 AssetEntry::AssetEntry(std::unique_ptr<std::byte[]> memPtr, const uint32_t assetSize)
     : memPtr(std::move(memPtr)), assetSize(assetSize), numRefsLifetime(0) {
@@ -16,6 +17,12 @@ void AssetEntry::freeRef(uint32_t refId) {
     lastRefFreedAt = std::chrono::system_clock::now();
 }
 
-std::chrono::duration<double> AssetEntry::getTimeSinceLastRefFreed() const {
-    return std::chrono::system_clock::now() - lastRefFreedAt;
+std::optional<std::chrono::duration<double> > AssetEntry::getTimeSinceLastRefFreed() const {
+
+    if (lastRefFreedAt) {
+        return std::chrono::system_clock::now() - lastRefFreedAt.value();
+    }
+
+    std::cout << "No refs for this asset have ever been freed." << "\n";
+    return std::nullopt;
 }
