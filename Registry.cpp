@@ -36,7 +36,7 @@ uint32_t Registry::GetCurrentUsage() {
 
 bool Registry::LoadIntoCache(fs::path const &path) {
     if (entries.contains(path)) {
-        // update entry
+        // TODO: update entry
         return false;
     }
 
@@ -62,4 +62,5 @@ bool Registry::LoadIntoCache(fs::path const &path) {
     auto entry = std::make_shared<AssetEntry>(std::move(memPtr), fileSize);
 
     entries.insert({path, entry});
+    return true;
 }
