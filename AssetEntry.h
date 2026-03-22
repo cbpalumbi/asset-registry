@@ -4,12 +4,14 @@
 #include <cstdint>
 #include <memory>
 #include <chrono>
+#include <span>
 #include <unordered_map>
 
 using timestamp = std::chrono::time_point<std::chrono::system_clock>;
 class AssetRef;
 
 class AssetEntry : public std::enable_shared_from_this<AssetEntry> {
+    // {id, ref} - id is unique within this AssetEntry
     std::unordered_map<uint32_t, std::weak_ptr<AssetRef>> refs;
     std::optional<timestamp> lastRefFreedAt;
     std::unique_ptr<std::byte[]> memPtr;
@@ -21,6 +23,7 @@ public:
     std::shared_ptr<AssetRef> createRef();
     void freeRef(uint32_t refId);
     std::optional<std::chrono::duration<double>> getTimeSinceLastRefFreed() const;
+    std::span<const std::byte> data() const;
 
 };
 

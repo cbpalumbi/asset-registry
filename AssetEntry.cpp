@@ -9,7 +9,12 @@ AssetEntry::AssetEntry(std::unique_ptr<std::byte[]> memPtr, const uint32_t asset
 
 std::shared_ptr<AssetRef> AssetEntry::createRef() {
     numRefsLifetime++;
-    return std::make_shared<AssetRef>(shared_from_this(), numRefsLifetime);
+    // using numRefsLiftime to create a unique id for this ref
+    auto ref = std::make_shared<AssetRef>(shared_from_this(), numRefsLifetime);
+
+    refs.insert({ref->id, ref});
+
+    return ref;
 }
 
 void AssetEntry::freeRef(uint32_t refId) {
@@ -25,4 +30,8 @@ std::optional<std::chrono::duration<double> > AssetEntry::getTimeSinceLastRefFre
 
     std::cout << "No refs for this asset have ever been freed." << "\n";
     return std::nullopt;
+}
+
+std::span<const std::byte> AssetEntry::data() const {
+    return std::span(memPtr.get(), assetSize);
 }

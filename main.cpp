@@ -3,6 +3,8 @@
 #include <iostream>
 #include <filesystem>
 #include <memory>
+
+#include "AssetRef.h"
 namespace fs = std::filesystem;
 
 
@@ -28,8 +30,16 @@ int main() {
 
         if (isValidPath(p)) {
             std::cout << "File '" << input << "' EXISTS at path " << p << "\n";
-            const bool success = registry->Load(p);
-            std::cout << "Load succeeded: " << success << "\n";
+            auto loadResult = registry->Load(p);
+            if (!loadResult) {
+                std::cout << "Load failed." << "\n";
+                return 1;
+            }
+
+            std::shared_ptr<AssetRef> ref = *loadResult;
+            std::cout << "Loaded at main, size is " << ref->data().size_bytes() << " bytes\n";
+
+
         } else {
             std::cout << "File '" << input << "' does not exist at path " << p << "\n";
         }

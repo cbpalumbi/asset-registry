@@ -3,18 +3,23 @@
 #include <iostream>
 #include <fstream>
 
+
 Registry::Registry() {
     std::cout << "Registry created\n";
     std::cout << "Num entries: " << entries.size() << "\n";
 }
 
-bool Registry::Load(fs::path const &path) {
+std::optional<std::shared_ptr<AssetRef>> Registry::Load(fs::path const &path) {
 
     // check if asset is in cache
     const bool assetIsInCache = false;
 
     if (!assetIsInCache) {
-        LoadIntoCache(path);
+        auto assetRef = LoadIntoCache(path);
+        if (!assetRef) {
+            return std::nullopt;
+        }
+        return assetRef;
     }
 
     // if not, check if it can fit in the cache
@@ -27,17 +32,14 @@ bool Registry::Load(fs::path const &path) {
             // return true, AssetRef*.
         // if not, return false
 
-    return true;
+    return std::nullopt;
 }
 
-uint32_t Registry::GetCurrentUsage() {
-    return 4;
-}
 
-bool Registry::LoadIntoCache(fs::path const &path) {
+std::optional<std::shared_ptr<AssetRef>> Registry::LoadIntoCache(fs::path const &path) {
     if (entries.contains(path)) {
         // TODO: update entry
-        return false;
+        return std::nullopt;
     }
 
     // determine the size of the file
@@ -49,7 +51,7 @@ bool Registry::LoadIntoCache(fs::path const &path) {
     stream.open(path, std::ios::binary);
     if (stream.fail()) {
         std::cout << "Error opening file " << path << "\n";
-        return false;
+        return std::nullopt;
     }
 
     auto memPtr = std::make_unique<std::byte[]>(fileSize);
@@ -60,7 +62,14 @@ bool Registry::LoadIntoCache(fs::path const &path) {
 
     // create a new AssetEntry
     auto entry = std::make_shared<AssetEntry>(std::move(memPtr), fileSize);
-
     entries.insert({path, entry});
-    return true;
+
+    std::shared_ptr<AssetRef> ref = entry->createRef();
+
+    return ref;
+}
+
+uint32_t Registry::GetCurrentUsage() {
+    // TODO: implement
+    return 4;
 }

@@ -13,7 +13,7 @@ class Registry {
 public:
     Registry();
 
-    bool Load(fs::path const &path);
+    std::optional<std::shared_ptr<AssetRef>> Load(fs::path const &path);
     uint32_t GetCurrentUsage();
 private:
 
@@ -21,7 +21,7 @@ private:
 
     std::unordered_map<fs::path, std::shared_ptr<AssetEntry>> entries;
 
-    bool LoadIntoCache(fs::path const &path);
+    std::optional<std::shared_ptr<AssetRef>> LoadIntoCache(fs::path const &path);
 };
 
 
