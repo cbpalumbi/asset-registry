@@ -40,17 +40,25 @@ bool Registry::LoadIntoCache(fs::path const &path) {
         return false;
     }
 
-    // load the bytes into memory with error handling
+    // determine the size of the file
+    auto fileSize = std::filesystem::file_size(path);
+    std::cout << "Filesize is " << fileSize << "\n";
 
     // open the file
 
     std::ifstream stream;
-    stream.setf(std::ios::binary);
-    stream.open(path);
+    stream.open(path, std::ios::binary);
     if (stream.fail()) {
-        std::cout << "Error reading file " << path << "\n";
+        std::cout << "Error opening file " << path << "\n";
         return false;
     }
+
+    auto memPtr = std::make_unique<std::byte[]>(fileSize);
+
+    // stream.read expects a char* to destination location. need to cast
+    stream.read(reinterpret_cast<char*>(memPtr.get()), fileSize);
+    std:: cout << stream.gcount() << "\n";
+
     stream.close();
 
 
