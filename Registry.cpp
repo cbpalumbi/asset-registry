@@ -1,6 +1,7 @@
 ﻿#include "Registry.h"
 
 #include <iostream>
+#include <fstream>
 
 Registry::Registry() {
     std::cout << "Registry created\n";
@@ -38,7 +39,24 @@ bool Registry::LoadIntoCache(fs::path const &path) {
         // update entry
         return false;
     }
+
+    // load the bytes into memory with error handling
+
+    // open the file
+
+    std::ifstream stream;
+    stream.setf(std::ios::binary);
+    stream.open(path);
+    if (stream.fail()) {
+        std::cout << "Error reading file " << path << "\n";
+        return false;
+    }
+    stream.close();
+
+
     // create a new AssetEntry
-    // TODO: make the ctor for AssetEntry. load the file in with a stream and pass the mem_ptr correctly
+
+
+
     entries.insert({path, std::make_shared<AssetEntry>()});
 }
