@@ -9,7 +9,16 @@ Registry::Registry() {
     std::cout << "Num entries: " << entries.size() << "\n";
 }
 
+bool isValidPath(const fs::path& p) {
+    return fs::exists(p) && !fs::is_directory(p);
+}
+
 std::optional<std::shared_ptr<AssetRef>> Registry::Load(fs::path const &path) {
+
+    if (!isValidPath(path)) {
+        std::cout << "Path " << path << "is not valid." << "\n";
+        return std::nullopt;
+    }
 
     // check if asset is in cache
     const bool assetIsInCache = false;
