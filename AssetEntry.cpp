@@ -17,8 +17,8 @@ std::shared_ptr<AssetRef> AssetEntry::createRef() {
     return ref;
 }
 
-void AssetEntry::freeRef(uint32_t refId) {
-    refs.erase(refId);
+void AssetEntry::freeRef(const AssetRef& ref) {
+    refs.erase(ref.id);
     lastRefFreedAt = std::chrono::system_clock::now();
 }
 

@@ -37,6 +37,7 @@ add_executable(
         Registry.cpp
         AssetEntry.cpp
         AssetRef.cpp
+        tests/AssetEntryTests.cpp
 )
 target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(
