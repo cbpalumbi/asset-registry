@@ -32,13 +32,17 @@ add_executable(AssetRegistry main.cpp
 enable_testing()
 
 add_executable(
-        my_test
-        my_test.cpp
+        tests
+        tests/RegistryTests.cpp
+        Registry.cpp
+        AssetEntry.cpp
+        AssetRef.cpp
 )
+target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(
-        my_test
+        tests
         GTest::gtest_main
 )
 
 include(GoogleTest)
-gtest_discover_tests(my_test)
+gtest_discover_tests(tests)
