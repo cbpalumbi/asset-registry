@@ -20,16 +20,18 @@ std::optional<std::shared_ptr<AssetRef>> Registry::Load(fs::path const &path) {
         return std::nullopt;
     }
 
-    // check if asset is in cache
-    const bool assetIsInCache = false;
-
-    if (!assetIsInCache) {
-        auto assetRef = LoadIntoCache(path);
-        if (!assetRef) {
-            return std::nullopt;
-        }
-        return assetRef;
+    // the asset is in the cache already if its path exists in the entries map
+    if (entries.contains(path)) {
+        // return a new asset ref for it
+        return entries[path]->createRef();
     }
+
+    // otherwise, load into cache
+    auto assetRef = LoadIntoCache(path);
+    if (!assetRef) {
+        return std::nullopt;
+    }
+    return assetRef;
 
     // if not, check if it can fit in the cache
         // if there is space, great

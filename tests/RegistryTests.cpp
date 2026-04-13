@@ -32,3 +32,16 @@ TEST_F(RegistryTest, LoadMissingFileReturnsNullopt) {
     auto result = registry.Load("does_not_exist.bin");
     EXPECT_FALSE(result.has_value());
 }
+
+// Loading an asset again should return a second asset ref
+TEST_F(RegistryTest, LoadAssetAgainReturnsNewAssetRef) {
+    auto firstRequest = registry.Load(tempFile);
+    auto secondRequest = registry.Load(tempFile);
+
+    // Both should have values
+    ASSERT_TRUE(firstRequest.has_value());
+    ASSERT_TRUE(secondRequest.has_value());
+
+    // Should be distinct AssetRef objects (different pointers)
+    EXPECT_NE(firstRequest->get(), secondRequest->get());
+}
