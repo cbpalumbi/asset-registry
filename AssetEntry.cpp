@@ -10,7 +10,7 @@ AssetEntry::AssetEntry(std::unique_ptr<std::byte[]> memPtr, const uint32_t asset
 std::shared_ptr<AssetRef> AssetEntry::createRef() {
     numRefsLifetime++;
     // using numRefsLiftime to create a unique id for this ref
-    auto ref = std::make_shared<AssetRef>(shared_from_this(), numRefsLifetime);
+    auto ref = std::shared_ptr<AssetRef>(new AssetRef(shared_from_this(), numRefsLifetime));
 
     refs.insert({ref->id, ref});
 
@@ -34,4 +34,8 @@ std::optional<std::chrono::duration<double> > AssetEntry::getTimeSinceLastRefFre
 
 std::span<const std::byte> AssetEntry::data() const {
     return std::span(memPtr.get(), assetSize);
+}
+
+size_t AssetEntry::getRefCount() const {
+    return refs.size();
 }
