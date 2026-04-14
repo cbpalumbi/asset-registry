@@ -17,7 +17,7 @@ protected:
         std::filesystem::remove(tempFile);
     }
 
-    static std::shared_ptr<AssetEntry> GetEntry(const AssetRef& ref) {
+    static std::shared_ptr<AssetEntry> DebugGetEntry(const AssetRef& ref) {
         return ref.assetEntry;
     }
 
@@ -33,7 +33,7 @@ TEST_F(AssetRefTests, DestructorRemovesRefFromEntry) {
         ASSERT_TRUE(ref.has_value());
 
         // using protected helper instead of direct member access
-        const auto entry = GetEntry(**ref);
+        const auto entry = DebugGetEntry(**ref);
         EXPECT_EQ(entry->getRefCount(), 1);
     } // exit scope, ref destroyed here
 }
@@ -43,14 +43,14 @@ TEST_F(AssetRefTests, DestructorSetsLastRefFreedAt) {
     {
         const auto ref = registry.Load(tempFile);
         ASSERT_TRUE(ref.has_value());
-        const auto entry = GetEntry(**ref);
+        const auto entry = DebugGetEntry(**ref);
         EXPECT_FALSE(entry->getTimeSinceLastRefFreed().has_value());
     } // destructor fires here
 
     // Reload to get a handle back to the entry and verify timestamp was set
     const auto ref = registry.Load(tempFile);
     ASSERT_TRUE(ref.has_value());
-    const auto entry = GetEntry(**ref);
+    const auto entry = DebugGetEntry(**ref);
     EXPECT_TRUE(entry->getTimeSinceLastRefFreed().has_value());
 }
 
@@ -58,7 +58,7 @@ TEST_F(AssetRefTests, DestructorSetsLastRefFreedAt) {
 TEST_F(AssetRefTests, DestructorOnlyRemovesOwnRef) {
     const auto keeper = registry.Load(tempFile);
     ASSERT_TRUE(keeper.has_value());
-    const auto keeperEntry = GetEntry(**keeper);
+    const auto keeperEntry = DebugGetEntry(**keeper);
 
     {
         const auto temp = registry.Load(tempFile);
@@ -77,5 +77,5 @@ TEST_F(AssetRefTests, MultipleLoadsShareSameEntry) {
     ASSERT_TRUE(ref1.has_value() && ref2.has_value());
 
     // Ensure both point to the same underlying AssetEntry address
-    EXPECT_EQ(GetEntry(**ref1).get(), GetEntry(**ref2).get());
+    EXPECT_EQ(DebugGetEntry(**ref1).get(), DebugGetEntry(**ref2).get());
 }

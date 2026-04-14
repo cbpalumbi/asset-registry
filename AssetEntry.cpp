@@ -39,3 +39,7 @@ std::span<const std::byte> AssetEntry::data() const {
 size_t AssetEntry::getRefCount() const {
     return refs.size();
 }
+
+uint32_t AssetEntry::getAssetSize() const {
+    return assetSize;
+}

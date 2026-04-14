@@ -19,6 +19,7 @@ class AssetEntry : public std::enable_shared_from_this<AssetEntry> {
     std::unique_ptr<std::byte[]> memPtr;
     uint32_t assetSize;
     int16_t numRefsLifetime;
+    bool isInCache;
 
 public:
     AssetEntry(std::unique_ptr<std::byte[]> memPtr, uint32_t assetSize);
@@ -28,6 +29,7 @@ public:
     std::optional<std::chrono::duration<double>> getTimeSinceLastRefFreed() const;
     std::span<const std::byte> data() const;
     size_t getRefCount() const;
+    uint32_t getAssetSize() const;
 
 };
 

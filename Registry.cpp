@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <ranges>
 
 
 Registry::Registry() {
@@ -49,7 +50,8 @@ std::optional<std::shared_ptr<AssetRef>> Registry::Load(fs::path const &path) {
 
 std::optional<std::shared_ptr<AssetRef>> Registry::LoadIntoCache(fs::path const &path) {
     if (entries.contains(path)) {
-        // TODO: update entry
+        // TODO: update entry to indicate it's in the cache
+
         return std::nullopt;
     }
 
@@ -80,7 +82,18 @@ std::optional<std::shared_ptr<AssetRef>> Registry::LoadIntoCache(fs::path const 
     return ref;
 }
 
+bool Registry::CanFitInCache(fs::path const &path) {
+    const auto fileSize = std::filesystem::file_size(path);
+    const uint32_t currentUsage = GetCurrentUsage();
+
+    return CACHE_CAPACITY - currentUsage >= fileSize;
+}
+
 uint32_t Registry::GetCurrentUsage() {
-    // TODO: implement
-    return 4;
+    uint32_t sum = 0;
+    for (const auto &val: entries | std::views::values) {
+        sum += val->getAssetSize();
+    }
+
+    return sum;
 }
