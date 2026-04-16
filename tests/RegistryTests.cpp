@@ -21,6 +21,9 @@ protected:
     bool DebugCanFitInCache(uintmax_t const fileSize) {
         return registry.CanFitInCache(fileSize);
     }
+    std::optional<std::vector<std::shared_ptr<AssetEntry>>> DebugTryGetEvictList(const uintmax_t fileSize) {
+        return registry.TryGetEvictList(fileSize);
+    }
 
     Registry registry;
 };
@@ -116,3 +119,89 @@ TEST_F(RegistryCacheTest, ReturnsTrueWhenSecondFileHitsCapacityExactly) {
     const auto file2Size = std::filesystem::file_size(file2);
     EXPECT_TRUE(DebugCanFitInCache(file2Size));
 }
+
+TEST_F(RegistryCacheTest, TryGetEvictListReturnsEmptyWhenNothingInRegistry) {
+    const auto file = createSizedFile("evict_empty.cache_tmp", 100);
+    const auto fileSize = std::filesystem::file_size(file);
+    EXPECT_TRUE(DebugTryGetEvictList(fileSize)->empty());
+}
+
+TEST_F(RegistryCacheTest, TryGetEvictListReturnsNulloptWhenAllRefsHeld) {
+    const size_t halfCap = registry.CACHE_CAPACITY / 2;
+    const auto file1 = createSizedFile("held1.cache_tmp", halfCap);
+    const auto file2 = createSizedFile("needs_space.cache_tmp", halfCap + 1);
+
+    // Hold the ref — keeps logical ref count at 1, not evictable
+    auto ref = registry.Load(file1);
+
+    const auto file2Size = std::filesystem::file_size(file2);
+    EXPECT_FALSE(DebugTryGetEvictList(file2Size).has_value());
+}
+
+TEST_F(RegistryCacheTest, TryGetEvictListReturnsEntriesWhenRefsReleased) {
+    const size_t halfCap = registry.CACHE_CAPACITY / 2;
+    const auto file1 = createSizedFile("evictable1.cache_tmp", halfCap);
+    const auto file2 = createSizedFile("needs_space.cache_tmp", halfCap);
+
+    {
+        auto ref = registry.Load(file1); // ref count = 1
+    } // AssetRef destroyed, freeRef called, ref count = 0
+
+    const auto file2Size = std::filesystem::file_size(file2);
+    const auto result = DebugTryGetEvictList(file2Size);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_FALSE(result->empty());
+}
+
+TEST_F(RegistryCacheTest, TryGetEvictListReturnsNulloptWhenEvictableSpaceInsufficient) {
+    const size_t quarterCap = registry.CACHE_CAPACITY / 4;
+    const auto smallFile = createSizedFile("small_evictable.cache_tmp", quarterCap);
+    const auto bigFile   = createSizedFile("too_big.cache_tmp", registry.CACHE_CAPACITY);
+
+    {
+        auto ref = registry.Load(smallFile);
+    } // evictable, but only quarterCap bytes free
+
+    const auto bigFileSize = std::filesystem::file_size(bigFile);
+    EXPECT_FALSE(DebugTryGetEvictList(bigFileSize).has_value());
+}
+
+TEST_F(RegistryCacheTest, TryGetEvictListExcludesEntriesWithLiveRefs) {
+    const size_t thirdCap = registry.CACHE_CAPACITY / 3;
+    const auto heldFile = createSizedFile("held_ref.cache_tmp",  thirdCap);
+    const auto freeFile = createSizedFile("free_ref.cache_tmp",  thirdCap);
+    const auto newFile  = createSizedFile("incoming.cache_tmp",  thirdCap);
+
+    auto heldRef = registry.Load(heldFile); // stays in scope, ref count = 1
+
+    {
+        auto tempRef = registry.Load(freeFile);
+    } // ref count drops to 0, freeFile is evictable
+
+    const auto newFileSize = std::filesystem::file_size(newFile);
+    const auto result = DebugTryGetEvictList(newFileSize);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->size(), 1u); // only freeFile, not heldFile
+}
+
+TEST_F(RegistryCacheTest, TryGetEvictListReturnsSufficientSubsetNotAllEntries) {
+    const size_t halfCap = registry.CACHE_CAPACITY / 2;
+    const auto file1   = createSizedFile("evict_a.cache_tmp", halfCap);
+    const auto file2   = createSizedFile("evict_b.cache_tmp", halfCap);
+    const auto newFile = createSizedFile("small_new.cache_tmp", 100);
+
+    {
+        auto ref1 = registry.Load(file1);
+    }
+    {
+        auto ref2 = registry.Load(file2);
+    }
+
+    const auto newFileSize = std::filesystem::file_size(newFile);
+    const auto result = DebugTryGetEvictList(newFileSize);
+    ASSERT_TRUE(result.has_value());
+    // 100 bytes needed — one halfCap entry is more than sufficient
+    // early exit should mean only 1 entry collected, not both
+    EXPECT_EQ(result->size(), 1u);
+}
+

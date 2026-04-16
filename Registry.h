@@ -23,6 +23,7 @@ private:
     std::optional<std::shared_ptr<AssetRef>> LoadIntoCache(fs::path const &path);
 
     bool CanFitInCache(uintmax_t fileSize);
+    std::optional<std::vector<std::shared_ptr<AssetEntry>>> TryGetEvictList(uintmax_t fileSize);
 };
 
 
