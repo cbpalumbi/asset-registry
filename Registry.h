@@ -22,7 +22,7 @@ private:
 
     std::optional<std::shared_ptr<AssetRef>> LoadIntoCache(fs::path const &path);
 
-    bool CanFitInCache(fs::path const &path);
+    bool CanFitInCache(uintmax_t fileSize);
 };
 
 

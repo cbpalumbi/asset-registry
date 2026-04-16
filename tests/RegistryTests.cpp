@@ -18,8 +18,8 @@ protected:
     }
 
     // Proxy method: RegistryTest is a friend, so it can call the private method
-    bool DebugCanFitInCache(const std::filesystem::path& p) {
-        return registry.CanFitInCache(p);
+    bool DebugCanFitInCache(uintmax_t const fileSize) {
+        return registry.CanFitInCache(fileSize);
     }
 
     Registry registry;
@@ -79,7 +79,8 @@ protected:
 
 TEST_F(RegistryCacheTest, CanFitInCacheReturnsTrueWhenRegistryEmpty) {
     const auto smallFile = createSizedFile("small.cache_tmp", 100);
-    EXPECT_TRUE(DebugCanFitInCache(smallFile));
+    const auto smallFileSize = std::filesystem::file_size(smallFile);
+    EXPECT_TRUE(DebugCanFitInCache(smallFileSize));
 }
 
 TEST_F(RegistryCacheTest, ReturnsFalseWhenCacheIsAtCapacity) {
@@ -90,7 +91,8 @@ TEST_F(RegistryCacheTest, ReturnsFalseWhenCacheIsAtCapacity) {
     registry.Load(bigFile);
 
     const auto anotherFile = createSizedFile("overflow.cache_tmp", 1);
-    EXPECT_FALSE(DebugCanFitInCache(anotherFile));
+    const auto anotherFileSize = std::filesystem::file_size(anotherFile);
+    EXPECT_FALSE(DebugCanFitInCache(anotherFileSize));
 }
 
 TEST_F(RegistryCacheTest, ReturnsTrueWhenMultipleFilesFit) {
@@ -99,7 +101,8 @@ TEST_F(RegistryCacheTest, ReturnsTrueWhenMultipleFilesFit) {
     const auto file2 = createSizedFile("file2.cache_tmp", quarterCap);
 
     registry.Load(file1);
-    EXPECT_TRUE(DebugCanFitInCache(file2));
+    const auto file2Size = std::filesystem::file_size(file2);
+    EXPECT_TRUE(DebugCanFitInCache(file2Size));
 }
 
 TEST_F(RegistryCacheTest, ReturnsTrueWhenSecondFileHitsCapacityExactly) {
@@ -110,5 +113,6 @@ TEST_F(RegistryCacheTest, ReturnsTrueWhenSecondFileHitsCapacityExactly) {
     registry.Load(file1);
 
     // Should be true because it's <= capacity, not strictly <
-    EXPECT_TRUE(DebugCanFitInCache(file2));
+    const auto file2Size = std::filesystem::file_size(file2);
+    EXPECT_TRUE(DebugCanFitInCache(file2Size));
 }

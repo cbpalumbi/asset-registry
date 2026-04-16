@@ -27,22 +27,29 @@ std::optional<std::shared_ptr<AssetRef>> Registry::Load(fs::path const &path) {
         return entries[path]->createRef();
     }
 
-    // otherwise, load into cache
-    auto assetRef = LoadIntoCache(path);
-    if (!assetRef) {
-        return std::nullopt;
+    const auto fileSize = std::filesystem::file_size(path);
+    if (fileSize > CACHE_CAPACITY) {
+        return std::nullopt; // TODO: Add CacheError to returned
     }
-    return assetRef;
 
-    // if not, check if it can fit in the cache
-        // if there is space, great
-        // load the item into the cache
-    // if not, check if it's possible to evict enough assets so that there will be room for it
+    // otherwise, attempt to load into cache
+    if (CanFitInCache(fileSize)) {
+        auto assetRef = LoadIntoCache(path);
+        if (!assetRef) {
+            return std::nullopt;
+        }
+        return assetRef;
+    } else {
+
+        // check if it's possible to evict enough assets so that there will be room for it
         // if yes, great
-            // for the evicted assets, follow the AssetEntry to their AssetRefs and invalidate them. then copy the AssetEntry's mem_ptr into a temp var. then set mem_ptr to nullptr. then free the memory using the temp ptr.
+            // for the evicted assets, follow the AssetEntry to their AssetRefs and invalidate them.
+            // then copy the AssetEntry's mem_ptr into a temp var.
+            // then set mem_ptr to nullptr. then free the memory using the temp ptr.
             // load the new asset into memory. create or update the AssetEntry for it, including creating a new AssetRef and
             // return true, AssetRef*.
         // if not, return false
+    }
 
     return std::nullopt;
 }
@@ -82,10 +89,8 @@ std::optional<std::shared_ptr<AssetRef>> Registry::LoadIntoCache(fs::path const 
     return ref;
 }
 
-bool Registry::CanFitInCache(fs::path const &path) {
-    const auto fileSize = std::filesystem::file_size(path);
+bool Registry::CanFitInCache(const uintmax_t fileSize) {
     const uint32_t currentUsage = GetCurrentUsage();
-
     return CACHE_CAPACITY - currentUsage >= fileSize;
 }
 
