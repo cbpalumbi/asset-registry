@@ -19,11 +19,11 @@ protected:
     }
 
     // Proxy method: RegistryTest is a friend, so it can call the private method
-    bool DebugCanFitInCache(uintmax_t const fileSize) {
-        return registry.canFitInCache(fileSize);
+    bool DebugCanFitInCacheWithEviction(uintmax_t const fileSize) const {
+        return registry.canFitInCacheWithEviction(fileSize);
     }
-    std::optional<std::vector<std::shared_ptr<AssetEntry>>> DebugTryGetEvictList(const uintmax_t fileSize) {
-        return registry.tryGetEvictList(fileSize);
+    std::list<fs::path> DebugTryGetEvictableList(const uintmax_t fileSize) {
+        return registry.tryGetEvictableList(fileSize);
     }
 
     bool DebugEvictAssetByPath(fs::path const& path) {
@@ -32,6 +32,10 @@ protected:
 
     bool DebugHasEntryInCache(fs::path const& path) {
         return registry.hasEntryInCache(path);
+    }
+
+    std::optional<std::shared_ptr<AssetEntry>> DebugGetEntryByPath(fs::path const& path) {
+        return registry.getEntryByPath(path);
     }
 };
 
@@ -92,35 +96,23 @@ TEST_F(RegistryTest, LoadAssetAgainReturnsNewAssetRef) {
 
 #pragma region CACHE TESTS
 
-TEST_F(RegistryCacheTest, CanFitInCacheReturnsTrueWhenRegistryEmpty) {
+TEST_F(RegistryCacheTest, CanFitInCacheWithEvictionReturnsTrueWhenRegistryEmpty) {
     const auto smallFile = createSizedFile("small.cache_tmp", 100);
     const auto smallFileSize = std::filesystem::file_size(smallFile);
-    EXPECT_TRUE(DebugCanFitInCache(smallFileSize));
+    EXPECT_TRUE(DebugCanFitInCacheWithEviction(smallFileSize));
 }
 
-TEST_F(RegistryCacheTest, ReturnsFalseWhenCacheIsAtCapacity) {
-    const size_t capacity = registry.CACHE_CAPACITY;
-    const auto bigFile = createSizedFile("full.cache_tmp", capacity);
-
-    // Load it to consume the capacity
-    registry.load(bigFile);
-
-    const auto anotherFile = createSizedFile("overflow.cache_tmp", 1);
-    const auto anotherFileSize = std::filesystem::file_size(anotherFile);
-    EXPECT_FALSE(DebugCanFitInCache(anotherFileSize));
-}
-
-TEST_F(RegistryCacheTest, ReturnsTrueWhenMultipleFilesFit) {
+TEST_F(RegistryCacheTest, CanFitInCacheWithEvictionReturnsTrueWhenMultipleFilesFit) {
     const size_t quarterCap = registry.CACHE_CAPACITY / 4;
     const auto file1 = createSizedFile("file1.cache_tmp", quarterCap);
     const auto file2 = createSizedFile("file2.cache_tmp", quarterCap);
 
     registry.load(file1);
     const auto file2Size = std::filesystem::file_size(file2);
-    EXPECT_TRUE(DebugCanFitInCache(file2Size));
+    EXPECT_TRUE(DebugCanFitInCacheWithEviction(file2Size));
 }
 
-TEST_F(RegistryCacheTest, ReturnsTrueWhenSecondFileHitsCapacityExactly) {
+TEST_F(RegistryCacheTest, CanFitInCacheWithEvictionReturnsTrueWhenSecondFileHitsCapacityExactly) {
     const size_t halfCap = registry.CACHE_CAPACITY / 2;
     const auto file1 = createSizedFile("half1.cache_tmp", halfCap);
     const auto file2 = createSizedFile("half2.cache_tmp", halfCap);
@@ -129,16 +121,16 @@ TEST_F(RegistryCacheTest, ReturnsTrueWhenSecondFileHitsCapacityExactly) {
 
     // Should be true because it's <= capacity, not strictly <
     const auto file2Size = std::filesystem::file_size(file2);
-    EXPECT_TRUE(DebugCanFitInCache(file2Size));
+    EXPECT_TRUE(DebugCanFitInCacheWithEviction(file2Size));
 }
 
 TEST_F(RegistryCacheTest, TryGetEvictListReturnsEmptyWhenNothingInRegistry) {
     const auto file = createSizedFile("evict_empty.cache_tmp", 100);
     const auto fileSize = std::filesystem::file_size(file);
-    EXPECT_TRUE(DebugTryGetEvictList(fileSize)->empty());
+    EXPECT_TRUE(DebugTryGetEvictableList(fileSize).empty());
 }
 
-TEST_F(RegistryCacheTest, TryGetEvictListReturnsNulloptWhenAllRefsHeld) {
+TEST_F(RegistryCacheTest, TryGetEvictListReturnsEmptyWhenAllRefsHeld) {
     const size_t halfCap = registry.CACHE_CAPACITY / 2;
     const auto file1 = createSizedFile("held1.cache_tmp", halfCap);
     const auto file2 = createSizedFile("needs_space.cache_tmp", halfCap + 1);
@@ -147,7 +139,7 @@ TEST_F(RegistryCacheTest, TryGetEvictListReturnsNulloptWhenAllRefsHeld) {
     auto ref = registry.load(file1);
 
     const auto file2Size = std::filesystem::file_size(file2);
-    EXPECT_FALSE(DebugTryGetEvictList(file2Size).has_value());
+    EXPECT_TRUE(DebugTryGetEvictableList(file2Size).empty());
 }
 
 TEST_F(RegistryCacheTest, TryGetEvictListReturnsEntriesWhenRefsReleased) {
@@ -160,22 +152,8 @@ TEST_F(RegistryCacheTest, TryGetEvictListReturnsEntriesWhenRefsReleased) {
     } // AssetRef destroyed, freeRef called, ref count = 0
 
     const auto file2Size = std::filesystem::file_size(file2);
-    const auto result = DebugTryGetEvictList(file2Size);
-    ASSERT_TRUE(result.has_value());
-    EXPECT_FALSE(result->empty());
-}
-
-TEST_F(RegistryCacheTest, TryGetEvictListReturnsNulloptWhenEvictableSpaceInsufficient) {
-    const size_t quarterCap = registry.CACHE_CAPACITY / 4;
-    const auto smallFile = createSizedFile("small_evictable.cache_tmp", quarterCap);
-    const auto bigFile   = createSizedFile("too_big.cache_tmp", registry.CACHE_CAPACITY);
-
-    {
-        auto ref = registry.load(smallFile);
-    } // evictable, but only quarterCap bytes free
-
-    const auto bigFileSize = std::filesystem::file_size(bigFile);
-    EXPECT_FALSE(DebugTryGetEvictList(bigFileSize).has_value());
+    const auto result = DebugTryGetEvictableList(file2Size);
+    EXPECT_FALSE(result.empty());
 }
 
 TEST_F(RegistryCacheTest, TryGetEvictListExcludesEntriesWithLiveRefs) {
@@ -191,9 +169,9 @@ TEST_F(RegistryCacheTest, TryGetEvictListExcludesEntriesWithLiveRefs) {
     } // ref count drops to 0, freeFile is evictable
 
     const auto newFileSize = std::filesystem::file_size(newFile);
-    const auto result = DebugTryGetEvictList(newFileSize);
-    ASSERT_TRUE(result.has_value());
-    EXPECT_EQ(result->size(), 1u); // only freeFile, not heldFile
+    const auto result = DebugTryGetEvictableList(newFileSize);
+
+    EXPECT_EQ(result.size(), 1u); // only freeFile, not heldFile
 }
 
 TEST_F(RegistryCacheTest, TryGetEvictListReturnsSufficientSubsetNotAllEntries) {
@@ -210,11 +188,10 @@ TEST_F(RegistryCacheTest, TryGetEvictListReturnsSufficientSubsetNotAllEntries) {
     }
 
     const auto newFileSize = std::filesystem::file_size(newFile);
-    const auto result = DebugTryGetEvictList(newFileSize);
-    ASSERT_TRUE(result.has_value());
+    const auto result = DebugTryGetEvictableList(newFileSize);
     // 100 bytes needed — one halfCap entry is more than sufficient
     // early exit should mean only 1 entry collected, not both
-    EXPECT_EQ(result->size(), 1u);
+    EXPECT_EQ(result.size(), 1u);
 }
 #pragma endregion
 
@@ -292,6 +269,115 @@ TEST_F(RegistryCacheTest, CacheUsageIsZeroAfterEvictingAllEntries) {
     DebugEvictAssetByPath(file2);
 
     EXPECT_EQ(registry.getCurrentUsage(), 0u);
+}
+
+#pragma endregion
+
+#pragma region LRU TESTS
+
+TEST_F(RegistryCacheTest, LruListIsEmptyWhenAllRefsHeld) {
+    const auto file1 = createSizedFile("lru_held.cache_tmp", 100);
+    const auto ref = registry.load(file1);
+
+    // ref is still alive, entry should not be on the lru list
+    EXPECT_TRUE(DebugTryGetEvictableList(100).empty());
+}
+
+TEST_F(RegistryCacheTest, LruListContainsEntryAfterRefReleased) {
+    const auto file1 = createSizedFile("lru_released.cache_tmp", 100);
+    {
+        const auto ref = registry.load(file1);
+    } // ref released, entry should enter lru list
+
+    const auto result = DebugTryGetEvictableList(100);
+    EXPECT_EQ(result.size(), 1u);
+}
+
+TEST_F(RegistryCacheTest, LruListEntryRemovedWhenAssetReRequested) {
+    const auto file1 = createSizedFile("lru_re_requested.cache_tmp", 100);
+    {
+        const auto ref = registry.load(file1);
+    } // ref released, entry enters lru list
+
+    // re-request the asset — should be removed from lru list
+    const auto ref2 = registry.load(file1);
+    EXPECT_TRUE(DebugTryGetEvictableList(100).empty());
+}
+
+TEST_F(RegistryCacheTest, LruListEntryReAddedAfterSecondRefReleased) {
+    const auto file1 = createSizedFile("lru_re_added.cache_tmp", 100);
+    {
+        const auto ref = registry.load(file1);
+    } // enters lru list
+
+    auto ref2 = registry.load(file1); // removed from lru list
+    // ref2 goes out of scope, should re-enter lru list
+
+    // need to release ref2 here to trigger freeRef
+    { const auto scoped = std::move(ref2); }
+
+    const auto result = DebugTryGetEvictableList(100);
+    EXPECT_EQ(result.size(), 1u);
+}
+
+TEST_F(RegistryCacheTest, LruListEntryReAddedAfterSecondRefReleased2) {
+    const auto file1 = createSizedFile("lru_re_added.cache_tmp", 100);
+    {
+        const auto ref = registry.load(file1);
+    } // enters lru list
+
+    {
+        const auto ref2 = registry.load(file1); // removed from lru list
+    }// ref2 goes out of scope, should re-enter lru list
+
+    const auto result = DebugTryGetEvictableList(100);
+    EXPECT_EQ(result.size(), 1u);
+}
+
+TEST_F(RegistryCacheTest, LruListHasLeastRecentlyFreedAssetAtBackOfList) {
+    const size_t thirdCap = registry.CACHE_CAPACITY / 3;
+    const std::string path_a_name = "lru_order_a.cache_tmp";
+    const std::string path_b_name = "lru_order_b.cache_tmp";
+    const auto fileA = createSizedFile(path_a_name, thirdCap);
+    const auto fileB = createSizedFile(path_b_name, thirdCap);
+
+    // release fileA first, then fileB
+    // fileA should be at the back of the list (evicted first)
+    { const auto ref1 = registry.load(fileA); }
+    { const auto ref2 = registry.load(fileB); }
+
+    const auto result = DebugTryGetEvictableList(thirdCap);
+    auto back = result.back();
+
+    const std::filesystem::path path_a = std::filesystem::current_path() / path_a_name;
+    const std::filesystem::path path_b = std::filesystem::current_path() / path_b_name;
+
+    EXPECT_EQ(result.front(), path_b); // fileB, most recently freed
+    EXPECT_EQ(result.back(), path_a);  // fileA, least recently freed
+}
+
+TEST_F(RegistryCacheTest, RegistryEvictsLeastRecentlyFreedAsset) {
+    const size_t thirdCap = registry.CACHE_CAPACITY / 3;
+    const std::string path_a_name = "lru_order_a.cache_tmp";
+    const std::string path_b_name = "lru_order_b.cache_tmp";
+    const auto fileA = createSizedFile(path_a_name, thirdCap);
+    const auto fileB = createSizedFile(path_b_name, thirdCap);
+
+    const size_t halfCap = registry.CACHE_CAPACITY / 2;
+    const auto fileC = createSizedFile("lru_order_c.cache_tmp", halfCap);
+
+    // release fileA first, then fileB
+    { const auto ref1 = registry.load(fileA); }
+    { const auto ref2 = registry.load(fileB); }
+
+    const auto ref = registry.load(fileC);
+    const auto result = DebugTryGetEvictableList(thirdCap);
+
+    const std::filesystem::path path_b = std::filesystem::current_path() / path_b_name;
+
+    EXPECT_EQ(result.size(), 1u);
+    EXPECT_EQ(result.front(), path_b); // fileB, most recently freed
+    EXPECT_EQ(result.back(), path_b);  // fileA, least recently freed
 }
 
 #pragma endregion

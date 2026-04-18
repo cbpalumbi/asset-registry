@@ -20,6 +20,7 @@ class AssetEntry : public std::enable_shared_from_this<AssetEntry> {
     fs::path path;
     std::unique_ptr<std::byte[]> memPtr;
     uint32_t assetSize;
+
     std::list<fs::path>* registryLruList;
 
     // {id, ref} - id is unique within this AssetEntry
