@@ -30,7 +30,7 @@ private:
     std::optional<std::shared_ptr<AssetRef>> loadIntoCache(fs::path const &path);
     bool canFitInCacheWithoutEviction(uintmax_t fileSize) const;
     bool canFitInCacheWithEviction(uintmax_t fileSize) const;
-    std::list<fs::path> tryGetEvictableList(uintmax_t fileSize);
+    std::list<fs::path> tryGetEvictableList();
     // returns size of evicted asset in bytes
     uintmax_t evictAssetByPath(fs::path const &path);
     uintmax_t evictAsset(std::shared_ptr<AssetEntry> entry);

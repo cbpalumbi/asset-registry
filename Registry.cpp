@@ -51,7 +51,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
     }
 
     // if it can't fit, see if the size of the evictable assets would be enough to make room for the new one
-    const auto evictableList = tryGetEvictableList(fileSize);
+    const auto evictableList = tryGetEvictableList();
 
     // TODO: potential optimization to minimize list traversal - combine size check?
     if (evictableList.empty() || !canFitInCacheWithEviction(fileSize)) {
@@ -103,7 +103,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::loadIntoCache(fs::path const 
 }
 
 bool Registry::canFitInCacheWithoutEviction(const uintmax_t fileSize) const {
-    return CACHE_CAPACITY - getCurrentUsage() > fileSize;
+    return CACHE_CAPACITY - getCurrentUsage() >= fileSize;
 }
 
 bool Registry::canFitInCacheWithEviction(const uintmax_t fileSize) const {
@@ -112,7 +112,7 @@ bool Registry::canFitInCacheWithEviction(const uintmax_t fileSize) const {
     return CACHE_CAPACITY - nonEvictableBytes >= fileSize;
 }
 
-std::list<fs::path> Registry::tryGetEvictableList(const uintmax_t fileSize) {
+std::list<fs::path> Registry::tryGetEvictableList() {
     return lruList;
 }
 
