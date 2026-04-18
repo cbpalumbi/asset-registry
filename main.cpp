@@ -25,7 +25,7 @@ int main() {
         p += "/" + input;
 
         std::cout << "File '" << input << "' EXISTS at path " << p << "\n";
-        auto loadResult = registry->Load(p);
+        auto loadResult = registry->load(p);
         if (!loadResult) {
             std::cout << "Load failed." << "\n";
             return 1;

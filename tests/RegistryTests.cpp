@@ -7,6 +7,7 @@
 class RegistryTest : public ::testing::Test {
 protected:
     std::filesystem::path tempFile = "test_asset.bin";
+    Registry registry;
 
     void SetUp() override {
         std::ofstream f(tempFile, std::ios::binary);
@@ -19,40 +20,20 @@ protected:
 
     // Proxy method: RegistryTest is a friend, so it can call the private method
     bool DebugCanFitInCache(uintmax_t const fileSize) {
-        return registry.CanFitInCache(fileSize);
+        return registry.canFitInCache(fileSize);
     }
     std::optional<std::vector<std::shared_ptr<AssetEntry>>> DebugTryGetEvictList(const uintmax_t fileSize) {
-        return registry.TryGetEvictList(fileSize);
+        return registry.tryGetEvictList(fileSize);
     }
 
-    Registry registry;
+    bool DebugEvictAssetByPath(fs::path const& path) {
+        return registry.evictAssetByPath(path);
+    }
+
+    bool DebugHasEntryInCache(fs::path const& path) {
+        return registry.hasEntryInCache(path);
+    }
 };
-
-// Loading a valid file should return a valid AssetRef
-TEST_F(RegistryTest, LoadValidFileReturnsRef) {
-    const auto result = registry.Load(tempFile);
-    EXPECT_TRUE(result.has_value());
-    EXPECT_NE(result->get(), nullptr);
-}
-
-// Loading a non-existent file should return nullopt
-TEST_F(RegistryTest, LoadMissingFileReturnsNullopt) {
-    const auto result = registry.Load("does_not_exist.bin");
-    EXPECT_FALSE(result.has_value());
-}
-
-// Loading an asset again should return a second asset ref
-TEST_F(RegistryTest, LoadAssetAgainReturnsNewAssetRef) {
-    const auto firstRequest = registry.Load(tempFile);
-    const auto secondRequest = registry.Load(tempFile);
-
-    // Both should have values
-    ASSERT_TRUE(firstRequest.has_value());
-    ASSERT_TRUE(secondRequest.has_value());
-
-    // Should be distinct AssetRef objects (different pointers)
-    EXPECT_NE(firstRequest->get(), secondRequest->get());
-}
 
 // Specialized fixture for creating tests with specific-sized files
 class RegistryCacheTest : public RegistryTest {
@@ -80,6 +61,37 @@ protected:
     }
 };
 
+#pragma region LOAD TESTS
+
+// Loading a valid file should return a valid AssetRef
+TEST_F(RegistryTest, LoadValidFileReturnsRef) {
+    const auto result = registry.load(tempFile);
+    EXPECT_TRUE(result.has_value());
+    EXPECT_NE(result->get(), nullptr);
+}
+
+// Loading a non-existent file should return nullopt
+TEST_F(RegistryTest, LoadMissingFileReturnsNullopt) {
+    const auto result = registry.load("does_not_exist.bin");
+    EXPECT_FALSE(result.has_value());
+}
+
+// Loading an asset again should return a second asset ref
+TEST_F(RegistryTest, LoadAssetAgainReturnsNewAssetRef) {
+    const auto firstRequest = registry.load(tempFile);
+    const auto secondRequest = registry.load(tempFile);
+
+    // Both should have values
+    ASSERT_TRUE(firstRequest.has_value());
+    ASSERT_TRUE(secondRequest.has_value());
+
+    // Should be distinct AssetRef objects (different pointers)
+    EXPECT_NE(firstRequest->get(), secondRequest->get());
+}
+#pragma endregion
+
+#pragma region CACHE TESTS
+
 TEST_F(RegistryCacheTest, CanFitInCacheReturnsTrueWhenRegistryEmpty) {
     const auto smallFile = createSizedFile("small.cache_tmp", 100);
     const auto smallFileSize = std::filesystem::file_size(smallFile);
@@ -91,7 +103,7 @@ TEST_F(RegistryCacheTest, ReturnsFalseWhenCacheIsAtCapacity) {
     const auto bigFile = createSizedFile("full.cache_tmp", capacity);
 
     // Load it to consume the capacity
-    registry.Load(bigFile);
+    registry.load(bigFile);
 
     const auto anotherFile = createSizedFile("overflow.cache_tmp", 1);
     const auto anotherFileSize = std::filesystem::file_size(anotherFile);
@@ -103,7 +115,7 @@ TEST_F(RegistryCacheTest, ReturnsTrueWhenMultipleFilesFit) {
     const auto file1 = createSizedFile("file1.cache_tmp", quarterCap);
     const auto file2 = createSizedFile("file2.cache_tmp", quarterCap);
 
-    registry.Load(file1);
+    registry.load(file1);
     const auto file2Size = std::filesystem::file_size(file2);
     EXPECT_TRUE(DebugCanFitInCache(file2Size));
 }
@@ -113,7 +125,7 @@ TEST_F(RegistryCacheTest, ReturnsTrueWhenSecondFileHitsCapacityExactly) {
     const auto file1 = createSizedFile("half1.cache_tmp", halfCap);
     const auto file2 = createSizedFile("half2.cache_tmp", halfCap);
 
-    registry.Load(file1);
+    registry.load(file1);
 
     // Should be true because it's <= capacity, not strictly <
     const auto file2Size = std::filesystem::file_size(file2);
@@ -132,7 +144,7 @@ TEST_F(RegistryCacheTest, TryGetEvictListReturnsNulloptWhenAllRefsHeld) {
     const auto file2 = createSizedFile("needs_space.cache_tmp", halfCap + 1);
 
     // Hold the ref — keeps logical ref count at 1, not evictable
-    auto ref = registry.Load(file1);
+    auto ref = registry.load(file1);
 
     const auto file2Size = std::filesystem::file_size(file2);
     EXPECT_FALSE(DebugTryGetEvictList(file2Size).has_value());
@@ -144,7 +156,7 @@ TEST_F(RegistryCacheTest, TryGetEvictListReturnsEntriesWhenRefsReleased) {
     const auto file2 = createSizedFile("needs_space.cache_tmp", halfCap);
 
     {
-        auto ref = registry.Load(file1); // ref count = 1
+        auto ref = registry.load(file1); // ref count = 1
     } // AssetRef destroyed, freeRef called, ref count = 0
 
     const auto file2Size = std::filesystem::file_size(file2);
@@ -159,7 +171,7 @@ TEST_F(RegistryCacheTest, TryGetEvictListReturnsNulloptWhenEvictableSpaceInsuffi
     const auto bigFile   = createSizedFile("too_big.cache_tmp", registry.CACHE_CAPACITY);
 
     {
-        auto ref = registry.Load(smallFile);
+        auto ref = registry.load(smallFile);
     } // evictable, but only quarterCap bytes free
 
     const auto bigFileSize = std::filesystem::file_size(bigFile);
@@ -172,10 +184,10 @@ TEST_F(RegistryCacheTest, TryGetEvictListExcludesEntriesWithLiveRefs) {
     const auto freeFile = createSizedFile("free_ref.cache_tmp",  thirdCap);
     const auto newFile  = createSizedFile("incoming.cache_tmp",  thirdCap);
 
-    auto heldRef = registry.Load(heldFile); // stays in scope, ref count = 1
+    auto heldRef = registry.load(heldFile); // stays in scope, ref count = 1
 
     {
-        auto tempRef = registry.Load(freeFile);
+        auto tempRef = registry.load(freeFile);
     } // ref count drops to 0, freeFile is evictable
 
     const auto newFileSize = std::filesystem::file_size(newFile);
@@ -191,10 +203,10 @@ TEST_F(RegistryCacheTest, TryGetEvictListReturnsSufficientSubsetNotAllEntries) {
     const auto newFile = createSizedFile("small_new.cache_tmp", 100);
 
     {
-        auto ref1 = registry.Load(file1);
+        auto ref1 = registry.load(file1);
     }
     {
-        auto ref2 = registry.Load(file2);
+        auto ref2 = registry.load(file2);
     }
 
     const auto newFileSize = std::filesystem::file_size(newFile);
@@ -204,4 +216,82 @@ TEST_F(RegistryCacheTest, TryGetEvictListReturnsSufficientSubsetNotAllEntries) {
     // early exit should mean only 1 entry collected, not both
     EXPECT_EQ(result->size(), 1u);
 }
+#pragma endregion
 
+#pragma region EVICT TESTS
+
+TEST_F(RegistryCacheTest, EvictedAssetIsRemovedFromEntries) {
+    const auto file = createSizedFile("evict_remove.cache_tmp", 100);
+    { auto ref = registry.load(file); }
+
+    DebugEvictAssetByPath(file);
+
+    EXPECT_FALSE(DebugHasEntryInCache(file));
+}
+
+TEST_F(RegistryCacheTest, EvictedAssetReducesCurrentUsage) {
+    const auto file = createSizedFile("evict_usage.cache_tmp", 100);
+    { const auto ref = registry.load(file); }
+
+    const auto usageBefore = registry.getCurrentUsage();
+    DebugEvictAssetByPath(file);
+    const auto usageAfter = registry.getCurrentUsage();
+
+    EXPECT_LT(usageAfter, usageBefore);
+}
+
+TEST_F(RegistryCacheTest, EvictedAssetReducesCurrentUsage2) {
+    const auto file = createSizedFile("evict_usage.cache_tmp", 100);
+    uint32_t usageBefore = 0;
+    {
+        const auto ref = registry.load(file);
+        usageBefore = registry.getCurrentUsage();
+    }
+
+    DebugEvictAssetByPath(file);
+    const auto usageAfter = registry.getCurrentUsage();
+
+    EXPECT_LT(usageAfter, usageBefore);
+}
+
+TEST_F(RegistryCacheTest, LoadAfterEvictReloadsAsset) {
+    const auto file = createSizedFile("evict_reload.cache_tmp", 100);
+    { const auto ref = registry.load(file); }
+
+    DebugEvictAssetByPath(file);
+    const auto ref = registry.load(file);
+
+    ASSERT_TRUE(ref.has_value());
+    EXPECT_NE(*ref, nullptr);
+}
+
+TEST_F(RegistryCacheTest, EvictionMakesRoomForNewAsset) {
+    const size_t halfCap = registry.CACHE_CAPACITY / 2;
+    const auto file1 = createSizedFile("evict_room_a.cache_tmp", halfCap);
+    const auto file2 = createSizedFile("evict_room_b.cache_tmp", halfCap);
+
+    { auto ref1 = registry.load(file1); }
+    { auto ref2 = registry.load(file2); }  // triggers eviction of file1
+
+    EXPECT_FALSE(DebugHasEntryInCache(file1));
+    EXPECT_TRUE(DebugHasEntryInCache(file2));
+}
+
+TEST_F(RegistryCacheTest, EvictingNonExistentPathReturnsFalse) {
+    const auto result = DebugEvictAssetByPath("does_not_exist.cache_tmp");
+    EXPECT_FALSE(result);
+}
+
+TEST_F(RegistryCacheTest, CacheUsageIsZeroAfterEvictingAllEntries) {
+    const auto file1 = createSizedFile("evict_all_a.cache_tmp", 100);
+    const auto file2 = createSizedFile("evict_all_b.cache_tmp", 100);
+    { const auto ref1 = registry.load(file1); }
+    { const auto ref2 = registry.load(file2); }
+
+    DebugEvictAssetByPath(file1);
+    DebugEvictAssetByPath(file2);
+
+    EXPECT_EQ(registry.getCurrentUsage(), 0u);
+}
+
+#pragma endregion

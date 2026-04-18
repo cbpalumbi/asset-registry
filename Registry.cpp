@@ -14,17 +14,26 @@ bool isValidPath(const fs::path& p) {
     return fs::exists(p) && !fs::is_directory(p);
 }
 
-std::optional<std::shared_ptr<AssetRef>> Registry::Load(fs::path const &path) {
+std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
 
     if (!isValidPath(path)) {
         std::cout << "Path " << path << "is not valid." << "\n";
         return std::nullopt;
     }
 
+    // Check if the asset is in the cache already.
     // the asset is in the cache already if its path exists in the entries map
     if (entries.contains(path)) {
         // return a new asset ref for it
-        return entries[path]->createRef();
+        auto ref = entries[path]->createRef();
+
+        // if it's in the lruList (lruIterator not null), remove it.
+        // this would be the case if there were no active refs for it,
+        // but it hadn't been evicted yet
+        if (entries[path]->lruIterator) {
+            lruList.erase(*entries[path]->lruIterator);
+        }
+        return ref;
     }
 
     const auto fileSize = std::filesystem::file_size(path);
@@ -33,22 +42,26 @@ std::optional<std::shared_ptr<AssetRef>> Registry::Load(fs::path const &path) {
     }
 
     // otherwise, attempt to load into cache
-    if (CanFitInCache(fileSize)) {
-        auto assetRef = LoadIntoCache(path);
+    if (canFitInCache(fileSize)) {
+        auto assetRef = loadIntoCache(path);
         if (!assetRef) {
             return std::nullopt;
         }
         return assetRef;
     } else {
-        auto evictList = TryGetEvictList(fileSize);
+        auto evictList = tryGetEvictList(fileSize);
         if (!evictList) {
             return std::nullopt; // TODO: Add CacheError returned
         }
+
+        for (const auto& item : *evictList) {
+            // evict the item
+            evictAsset(item);
+        }
+
         // if yes, great
-            // for the evicted assets, follow the AssetEntry to their AssetRefs and invalidate them.
-            // then copy the AssetEntry's mem_ptr into a temp var.
-            // then set mem_ptr to nullptr. then free the memory using the temp ptr.
-            // load the new asset into memory. create or update the AssetEntry for it, including creating a new AssetRef and
+
+            // load the new asset into memory. create  the AssetEntry for it, including creating a new AssetRef and
             // return true, AssetRef*.
         // if not, return false
     }
@@ -57,12 +70,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::Load(fs::path const &path) {
 }
 
 
-std::optional<std::shared_ptr<AssetRef>> Registry::LoadIntoCache(fs::path const &path) {
-    if (entries.contains(path)) {
-        // TODO: update entry to indicate it's in the cache
-
-        return std::nullopt;
-    }
+std::optional<std::shared_ptr<AssetRef>> Registry::loadIntoCache(fs::path const &path) {
 
     // determine the size of the file
     auto fileSize = std::filesystem::file_size(path);
@@ -83,7 +91,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::LoadIntoCache(fs::path const 
     stream.close();
 
     // create a new AssetEntry
-    auto entry = std::make_shared<AssetEntry>(std::move(memPtr), fileSize);
+    auto entry = std::make_shared<AssetEntry>(path, std::move(memPtr), fileSize, &lruList);
     entries.insert({path, entry});
 
     std::shared_ptr<AssetRef> ref = entry->createRef();
@@ -91,12 +99,12 @@ std::optional<std::shared_ptr<AssetRef>> Registry::LoadIntoCache(fs::path const 
     return ref;
 }
 
-bool Registry::CanFitInCache(const uintmax_t fileSize) {
-    const uint32_t currentUsage = GetCurrentUsage();
+bool Registry::canFitInCache(const uintmax_t fileSize) {
+    const uint32_t currentUsage = getCurrentUsage();
     return CACHE_CAPACITY - currentUsage >= fileSize;
 }
 
-std::optional<std::vector<std::shared_ptr<AssetEntry>>> Registry::TryGetEvictList(const uintmax_t fileSize) {
+std::optional<std::vector<std::shared_ptr<AssetEntry>>> Registry::tryGetEvictList(const uintmax_t fileSize) {
     // loop through the asset entries and find ones with zero refs
 
     uintmax_t sumEvictableBytes = 0;
@@ -118,7 +126,7 @@ std::optional<std::vector<std::shared_ptr<AssetEntry>>> Registry::TryGetEvictLis
     return std::nullopt;
 }
 
-uint32_t Registry::GetCurrentUsage() {
+uint32_t Registry::getCurrentUsage() {
     uint32_t sum = 0;
     for (const auto &val: entries | std::views::values) {
         sum += val->getAssetSize();
@@ -126,3 +134,30 @@ uint32_t Registry::GetCurrentUsage() {
 
     return sum;
 }
+
+
+bool Registry::evictAssetByPath(fs::path const &path) {
+    if (entries.contains(path)) {
+        const auto entry = entries[path];
+        return evictAsset(entry);
+    }
+    return false;
+}
+
+bool Registry::evictAsset(std::shared_ptr<AssetEntry> entry) {
+    // for the evicted assets, follow the AssetEntry to their AssetRefs and invalidate them.
+    entry->invalidateRefs();
+
+    // free the memory - std::unique_ptr gets freed when goes out of scope
+    entry->memPtr = nullptr;
+
+    // destroy the AssetEntry
+    entries.erase(entry->path);
+    entry.reset();
+    return true;
+}
+
+bool Registry::hasEntryInCache(fs::path const &path) const {
+    return entries.contains(path);
+}
+

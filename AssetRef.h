@@ -17,12 +17,12 @@ class AssetRef {
 
     // RAII constructor
     AssetRef(std::shared_ptr<AssetEntry> assetEntry, const uint32_t id) : assetEntry(assetEntry), id(id) {};
+    void invalidate();
 
 public:
     std::span<const std::byte> data() const;
     // RAII destructor, public so shared_ptr can use
-    ~AssetRef() { assetEntry->freeRef(*this); }
-
+    ~AssetRef() { if (assetEntry) assetEntry->freeRef(*this); }
 };
 
 
