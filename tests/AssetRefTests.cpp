@@ -24,10 +24,10 @@ protected:
     Registry registry;
 };
 
-// --- RAII Destructor ---
+#pragma region RaiiDestructor
 
 // When all refs are dropped, the entry's ref map should be empty
-TEST_F(AssetRefTests, DestructorRemovesRefFromEntry) {
+TEST_F(AssetRefTests, TriggerDestructor_WithLiveRef_RemovesRefFromEntry) {
     { // enter scope
         const auto ref = registry.load(tempFile);
         ASSERT_TRUE(ref.has_value());
@@ -39,7 +39,7 @@ TEST_F(AssetRefTests, DestructorRemovesRefFromEntry) {
 }
 
 // Destroying one ref should not affect other live refs to the same asset
-TEST_F(AssetRefTests, DestructorOnlyRemovesOwnRef) {
+TEST_F(AssetRefTests, TriggerDestructor_WithMultipleLiveRefs_RemovesOnlyThatRefFromEntry) {
     const auto keeper = registry.load(tempFile);
     ASSERT_TRUE(keeper.has_value());
     const auto keeperEntry = DebugGetEntry(**keeper);
@@ -53,8 +53,10 @@ TEST_F(AssetRefTests, DestructorOnlyRemovesOwnRef) {
     EXPECT_EQ(keeperEntry->getRefCount(), 1);
 }
 
+#pragma endregion
+
 // Both refs should point to the same AssetEntry object
-TEST_F(AssetRefTests, MultipleLoadsShareSameEntry) {
+TEST_F(AssetRefTests, GetEntryPointer_WithMultipleRefsOfOneAsset_ResolvesToSameEntry) {
     const auto ref1 = registry.load(tempFile);
     const auto ref2 = registry.load(tempFile);
 
