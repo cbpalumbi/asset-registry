@@ -16,6 +16,13 @@ protected:
 
     void TearDown() override {
         std::filesystem::remove(tempFile);
+        
+        // Cleanup any extra files created during tests
+        for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::current_path())) {
+            if (entry.path().extension() == ".cache_tmp") {
+                std::filesystem::remove(entry.path());
+            }
+        }
     }
 
     // Proxy method: RegistryTest is a friend, so it can call the private method
@@ -37,11 +44,7 @@ protected:
     std::optional<std::shared_ptr<AssetEntry>> DebugGetEntryByPath(fs::path const& path) {
         return registry.getEntryByPath(path);
     }
-};
 
-// Specialized fixture for creating tests with specific-sized files
-class RegistryCacheTest : public RegistryTest {
-protected:
     // Helper to create a file of a specific byte size
     static std::filesystem::path createSizedFile(const std::string& name, const size_t size) {
         std::filesystem::path p = std::filesystem::current_path() / name;
@@ -54,15 +57,6 @@ protected:
         return p;
     }
 
-    void TearDown() override {
-        RegistryTest::TearDown();
-        // Cleanup any extra files created during tests
-        for (const auto& entry : std::filesystem::directory_iterator(std::filesystem::current_path())) {
-            if (entry.path().extension() == ".cache_tmp") {
-                std::filesystem::remove(entry.path());
-            }
-        }
-    }
 };
 
 #pragma region LOAD TESTS
@@ -96,7 +90,7 @@ TEST_F(RegistryTest, LoadAssetAgainReturnsNewAssetRef) {
 #pragma endregion
 
 #pragma region CACHE TESTS
-TEST_F(RegistryCacheTest, LoadAssetWithSizeEqualToCacheCapacitySucceeds) {
+TEST_F(RegistryTest, LoadAssetWithSizeEqualToCacheCapacitySucceeds) {
     const auto file1 = createSizedFile("file1.cache_tmp", registry.CACHE_CAPACITY);
 
     const auto ref1 = registry.load(file1);
@@ -105,7 +99,7 @@ TEST_F(RegistryCacheTest, LoadAssetWithSizeEqualToCacheCapacitySucceeds) {
 }
 
 // Loading an asset when the cache cannot evict anything returns nullopt
-TEST_F(RegistryCacheTest, LoadAssetWhenEvictionImpossibleReturnsNullopt) {
+TEST_F(RegistryTest, LoadAssetWhenEvictionImpossibleReturnsNullopt) {
     const auto file1 = createSizedFile("file1.cache_tmp", registry.CACHE_CAPACITY);
     const auto file2 = createSizedFile("file2.cache_tmp", 1);
 
@@ -115,13 +109,13 @@ TEST_F(RegistryCacheTest, LoadAssetWhenEvictionImpossibleReturnsNullopt) {
     ASSERT_FALSE(ref2.has_value());
 }
 
-TEST_F(RegistryCacheTest, CanFitInCacheWithEvictionReturnsTrueWhenRegistryEmpty) {
+TEST_F(RegistryTest, CanFitInCacheWithEvictionReturnsTrueWhenRegistryEmpty) {
     const auto smallFile = createSizedFile("small.cache_tmp", 100);
     const auto smallFileSize = std::filesystem::file_size(smallFile);
     EXPECT_TRUE(DebugCanFitInCacheWithEviction(smallFileSize));
 }
 
-TEST_F(RegistryCacheTest, CanFitInCacheWithEvictionReturnsTrueWhenMultipleFilesFit) {
+TEST_F(RegistryTest, CanFitInCacheWithEvictionReturnsTrueWhenMultipleFilesFit) {
     const size_t quarterCap = registry.CACHE_CAPACITY / 4;
     const auto file1 = createSizedFile("file1.cache_tmp", quarterCap);
     const auto file2 = createSizedFile("file2.cache_tmp", quarterCap);
@@ -131,7 +125,7 @@ TEST_F(RegistryCacheTest, CanFitInCacheWithEvictionReturnsTrueWhenMultipleFilesF
     EXPECT_TRUE(DebugCanFitInCacheWithEviction(file2Size));
 }
 
-TEST_F(RegistryCacheTest, CanFitInCacheWithEvictionReturnsTrueWhenSecondFileHitsCapacityExactly) {
+TEST_F(RegistryTest, CanFitInCacheWithEvictionReturnsTrueWhenSecondFileHitsCapacityExactly) {
     const size_t halfCap = registry.CACHE_CAPACITY / 2;
     const auto file1 = createSizedFile("half1.cache_tmp", halfCap);
     const auto file2 = createSizedFile("half2.cache_tmp", halfCap);
@@ -143,12 +137,12 @@ TEST_F(RegistryCacheTest, CanFitInCacheWithEvictionReturnsTrueWhenSecondFileHits
     EXPECT_TRUE(DebugCanFitInCacheWithEviction(file2Size));
 }
 
-TEST_F(RegistryCacheTest, TryGetEvictListReturnsEmptyWhenNothingInRegistry) {
+TEST_F(RegistryTest, TryGetEvictListReturnsEmptyWhenNothingInRegistry) {
     const auto file = createSizedFile("evict_empty.cache_tmp", 100);
     EXPECT_TRUE(DebugTryGetEvictableList().empty());
 }
 
-TEST_F(RegistryCacheTest, TryGetEvictListReturnsEmptyWhenAllRefsHeld) {
+TEST_F(RegistryTest, TryGetEvictListReturnsEmptyWhenAllRefsHeld) {
     const size_t halfCap = registry.CACHE_CAPACITY / 2;
     const auto file1 = createSizedFile("held1.cache_tmp", halfCap);
 
@@ -158,7 +152,7 @@ TEST_F(RegistryCacheTest, TryGetEvictListReturnsEmptyWhenAllRefsHeld) {
     EXPECT_TRUE(DebugTryGetEvictableList().empty());
 }
 
-TEST_F(RegistryCacheTest, TryGetEvictListReturnsEmptyWhenRefsReleased) {
+TEST_F(RegistryTest, TryGetEvictListReturnsEmptyWhenRefsReleased) {
     const size_t halfCap = registry.CACHE_CAPACITY / 2;
     const auto file1 = createSizedFile("evictable1.cache_tmp", halfCap);
 
@@ -170,7 +164,7 @@ TEST_F(RegistryCacheTest, TryGetEvictListReturnsEmptyWhenRefsReleased) {
     EXPECT_FALSE(result.empty());
 }
 
-TEST_F(RegistryCacheTest, TryGetEvictListExcludesEntriesWithLiveRefs) {
+TEST_F(RegistryTest, TryGetEvictListExcludesEntriesWithLiveRefs) {
     const size_t thirdCap = registry.CACHE_CAPACITY / 3;
     const auto heldFile = createSizedFile("held_ref.cache_tmp",  thirdCap);
     const auto freeFile = createSizedFile("free_ref.cache_tmp",  thirdCap);
@@ -189,7 +183,7 @@ TEST_F(RegistryCacheTest, TryGetEvictListExcludesEntriesWithLiveRefs) {
 
 #pragma region EVICT TESTS
 
-TEST_F(RegistryCacheTest, EvictedAssetIsRemovedFromEntries) {
+TEST_F(RegistryTest, EvictedAssetIsRemovedFromEntries) {
     const auto file = createSizedFile("evict_remove.cache_tmp", 100);
     { auto ref = registry.load(file); }
 
@@ -198,7 +192,7 @@ TEST_F(RegistryCacheTest, EvictedAssetIsRemovedFromEntries) {
     EXPECT_FALSE(DebugHasEntryInCache(file));
 }
 
-TEST_F(RegistryCacheTest, EvictedAssetReducesCurrentUsage) {
+TEST_F(RegistryTest, EvictedAssetReducesCurrentUsage) {
     const auto file = createSizedFile("evict_usage.cache_tmp", 100);
     { const auto ref = registry.load(file); }
 
@@ -209,7 +203,7 @@ TEST_F(RegistryCacheTest, EvictedAssetReducesCurrentUsage) {
     EXPECT_LT(usageAfter, usageBefore);
 }
 
-TEST_F(RegistryCacheTest, EvictedAssetReducesCurrentUsage2) {
+TEST_F(RegistryTest, EvictedAssetReducesCurrentUsage2) {
     const auto file = createSizedFile("evict_usage.cache_tmp", 100);
     uint32_t usageBefore = 0;
     {
@@ -223,7 +217,7 @@ TEST_F(RegistryCacheTest, EvictedAssetReducesCurrentUsage2) {
     EXPECT_LT(usageAfter, usageBefore);
 }
 
-TEST_F(RegistryCacheTest, LoadAfterEvictReloadsAsset) {
+TEST_F(RegistryTest, LoadAfterEvictReloadsAsset) {
     const auto file = createSizedFile("evict_reload.cache_tmp", 100);
     { const auto ref = registry.load(file); }
 
@@ -234,7 +228,7 @@ TEST_F(RegistryCacheTest, LoadAfterEvictReloadsAsset) {
     EXPECT_NE(*ref, nullptr);
 }
 
-TEST_F(RegistryCacheTest, EvictionMakesRoomForNewAsset) {
+TEST_F(RegistryTest, EvictionMakesRoomForNewAsset) {
     const size_t halfCap = registry.CACHE_CAPACITY / 2;
     const auto file1 = createSizedFile("evict_room_a.cache_tmp", halfCap);
     const auto file2 = createSizedFile("evict_room_b.cache_tmp", halfCap + 1);
@@ -246,12 +240,12 @@ TEST_F(RegistryCacheTest, EvictionMakesRoomForNewAsset) {
     EXPECT_TRUE(DebugHasEntryInCache(file2));
 }
 
-TEST_F(RegistryCacheTest, EvictingNonExistentPathReturnsFalse) {
+TEST_F(RegistryTest, EvictingNonExistentPathReturnsFalse) {
     const auto result = DebugEvictAssetByPath("does_not_exist.cache_tmp");
     EXPECT_FALSE(result);
 }
 
-TEST_F(RegistryCacheTest, CacheUsageIsZeroAfterEvictingAllEntries) {
+TEST_F(RegistryTest, CacheUsageIsZeroAfterEvictingAllEntries) {
     const auto file1 = createSizedFile("evict_all_a.cache_tmp", 100);
     const auto file2 = createSizedFile("evict_all_b.cache_tmp", 100);
     { const auto ref1 = registry.load(file1); }
@@ -267,7 +261,7 @@ TEST_F(RegistryCacheTest, CacheUsageIsZeroAfterEvictingAllEntries) {
 
 #pragma region LRU TESTS
 
-TEST_F(RegistryCacheTest, LruListIsEmptyWhenAllRefsHeld) {
+TEST_F(RegistryTest, LruListIsEmptyWhenAllRefsHeld) {
     const auto file1 = createSizedFile("lru_held.cache_tmp", 100);
     const auto ref = registry.load(file1);
 
@@ -275,7 +269,7 @@ TEST_F(RegistryCacheTest, LruListIsEmptyWhenAllRefsHeld) {
     EXPECT_TRUE(DebugTryGetEvictableList().empty());
 }
 
-TEST_F(RegistryCacheTest, LruListContainsEntryAfterRefReleased) {
+TEST_F(RegistryTest, LruListContainsEntryAfterRefReleased) {
     const auto file1 = createSizedFile("lru_released.cache_tmp", 100);
     {
         const auto ref = registry.load(file1);
@@ -285,7 +279,7 @@ TEST_F(RegistryCacheTest, LruListContainsEntryAfterRefReleased) {
     EXPECT_EQ(result.size(), 1u);
 }
 
-TEST_F(RegistryCacheTest, LruListEntryRemovedWhenAssetReRequested) {
+TEST_F(RegistryTest, LruListEntryRemovedWhenAssetReRequested) {
     const auto file1 = createSizedFile("lru_re_requested.cache_tmp", 100);
     {
         const auto ref = registry.load(file1);
@@ -296,7 +290,7 @@ TEST_F(RegistryCacheTest, LruListEntryRemovedWhenAssetReRequested) {
     EXPECT_TRUE(DebugTryGetEvictableList().empty());
 }
 
-TEST_F(RegistryCacheTest, LruListEntryReAddedAfterSecondRefReleased) {
+TEST_F(RegistryTest, LruListEntryReAddedAfterSecondRefReleased) {
     const auto file1 = createSizedFile("lru_re_added.cache_tmp", 100);
     {
         const auto ref = registry.load(file1);
@@ -312,7 +306,7 @@ TEST_F(RegistryCacheTest, LruListEntryReAddedAfterSecondRefReleased) {
     EXPECT_EQ(result.size(), 1u);
 }
 
-TEST_F(RegistryCacheTest, LruListEntryReAddedAfterSecondRefReleased2) {
+TEST_F(RegistryTest, LruListEntryReAddedAfterSecondRefReleased2) {
     const auto file1 = createSizedFile("lru_re_added.cache_tmp", 100);
     {
         const auto ref = registry.load(file1);
@@ -326,7 +320,7 @@ TEST_F(RegistryCacheTest, LruListEntryReAddedAfterSecondRefReleased2) {
     EXPECT_EQ(result.size(), 1u);
 }
 
-TEST_F(RegistryCacheTest, LruListHasLeastRecentlyFreedAssetAtBackOfList) {
+TEST_F(RegistryTest, LruListHasLeastRecentlyFreedAssetAtBackOfList) {
     const size_t thirdCap = registry.CACHE_CAPACITY / 3;
     const std::string path_a_name = "lru_order_a.cache_tmp";
     const std::string path_b_name = "lru_order_b.cache_tmp";
@@ -348,7 +342,7 @@ TEST_F(RegistryCacheTest, LruListHasLeastRecentlyFreedAssetAtBackOfList) {
     EXPECT_EQ(result.back(), path_a);  // fileA, least recently freed
 }
 
-TEST_F(RegistryCacheTest, RegistryEvictsLeastRecentlyFreedAsset) {
+TEST_F(RegistryTest, RegistryEvictsLeastRecentlyFreedAsset) {
     const size_t thirdCap = registry.CACHE_CAPACITY / 3;
     const std::string path_a_name = "lru_order_a.cache_tmp";
     const std::string path_b_name = "lru_order_b.cache_tmp";
@@ -372,7 +366,7 @@ TEST_F(RegistryCacheTest, RegistryEvictsLeastRecentlyFreedAsset) {
     EXPECT_EQ(result.back(), path_b);  // fileA, least recently freed
 }
 
-TEST_F(RegistryCacheTest, RegistryEvictsOnlyEnoughToFitNewAsset) {
+TEST_F(RegistryTest, RegistryEvictsOnlyEnoughToFitNewAsset) {
     const size_t fifthCap = registry.CACHE_CAPACITY / 5;
     const auto fileA = createSizedFile("itemA.cache_tmp", fifthCap);
     const auto fileB = createSizedFile("itemB.cache_tmp", fifthCap);
@@ -404,7 +398,7 @@ TEST_F(RegistryCacheTest, RegistryEvictsOnlyEnoughToFitNewAsset) {
     EXPECT_EQ(result.back(), path_d);  // fileD, least recently freed (of those still in the registry)
 }
 
-TEST_F(RegistryCacheTest, LruEntryRemovedFromListOnEviction) {
+TEST_F(RegistryTest, LruEntryRemovedFromListOnEviction) {
     const auto file1 = createSizedFile("lru_evicted.cache_tmp", 100);
     {
         const auto ref = registry.load(file1);
