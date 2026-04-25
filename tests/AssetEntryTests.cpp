@@ -15,44 +15,55 @@ protected:
         std::memset(mem.get(), 0xAB, size);  // fill with known pattern
         return std::make_shared<AssetEntry>("fake/path.asset", std::move(mem), size, nullptr);
     }
-
-    void TearDown() override {
-        // nothing to clean up — no real files created
-    }
 };
 
-TEST_F(AssetEntryTest, CreateRefReturnsValidRef) {
-    auto entry = makeEntry("hello");
-    auto ref = entry->createRef();
+#pragma region CreateRef
+
+TEST_F(AssetEntryTest, CreateRef_WithValidEntry_ReturnsRef) {
+    const auto entry = makeEntry("hello");
+    const auto ref = entry->createRef();
     EXPECT_NE(ref, nullptr);
 }
 
-TEST_F(AssetEntryTest, EachRefGetsUniqueId) {
-    auto entry = makeEntry("hello");
-    auto ref1 = entry->createRef();
-    auto ref2 = entry->createRef();
+TEST_F(AssetEntryTest, CreateRef_WithMultipleRefs_EachRefGetsUniqueId) {
+    const auto entry = makeEntry("hello");
+    const auto ref1 = entry->createRef();
+    const auto ref2 = entry->createRef();
     EXPECT_NE(ref1, ref2);
 }
 
-TEST_F(AssetEntryTest, DataReturnsCorrectBytes) {
-    auto entry = makeEntry("hello");
-    auto data = entry->data();
-    EXPECT_EQ(data.size(), 5);
+#pragma endregion
+
+#pragma region GetData
+
+TEST_F(AssetEntryTest, GetData_WithValidEntry_ReturnsCorrectData) {
+    const auto entry = makeEntry("hello");
+    const auto data = entry->data();
     EXPECT_EQ(std::memcmp(data.data(), "hello", 5), 0);
 }
 
-TEST_F(AssetEntryTest, DataSizeMatchesInput) {
-    auto entry = makeEntry("hello world");
-    EXPECT_EQ(entry->data().size(), 11);
+TEST_F(AssetEntryTest, GetData_WithValidEntry_ReturnsDataOfCorrectSize) {
+    const auto entry = makeEntry("hello");
+    const auto data = entry->data();
+    EXPECT_EQ(data.size(), 5);
 }
 
-// TODO: remove
-TEST_F(AssetEntryTest, TimeSinceLastRefFreedIsNulloptIfNoneFreed) {
-    auto entry = makeEntry("hello");
-    EXPECT_FALSE(entry->getTimeSinceLastRefFreed().has_value());
+TEST_F(AssetEntryTest, GetData_WithValidEntry_ReturnsSameMemoryAddress) {
+    const auto entry = makeEntry("stability_test");
+    const auto data1 = entry->data().data();
+
+    const auto ref = entry->createRef();
+    const auto data2 = ref->data().data();
+
+    // Verify we are looking at the exact same memory address (no copies)
+    EXPECT_EQ(data1, data2);
 }
 
-TEST_F(AssetEntryTest, RefCountPrecision) {
+#pragma endregion
+
+#pragma region GetRefCount
+
+TEST_F(AssetEntryTest, GetRefCount_AfterRefFreed_ReturnsCorrectCount) {
     const auto entry = makeEntry("ref_test");
     EXPECT_EQ(entry->getRefCount(), 0);
 
@@ -68,20 +79,11 @@ TEST_F(AssetEntryTest, RefCountPrecision) {
     EXPECT_EQ(entry->getRefCount(), 0);
 }
 
-TEST_F(AssetEntryTest, SpanMemoryStability) {
-    const auto entry = makeEntry("stability_test");
-    const auto data1 = entry->data().data();
+#pragma endregion
 
-    const auto ref = entry->createRef();
-    const auto data2 = ref->data().data();
+#pragma region InvalidateRefs
 
-    // Verify we are looking at the exact same memory address (no copies)
-    EXPECT_EQ(data1, data2);
-}
-
-#pragma region INVALIDATION TESTS
-
-TEST_F(AssetEntryTest, InvalidateRefsInvalidatesAllActiveRefs) {
+TEST_F(AssetEntryTest, InvalidateRefs_WithActiveRefs_InvalidatesAllActiveRefs) {
     auto entry = makeEntry("hello");
     auto ref1 = entry->createRef();
     auto ref2 = entry->createRef();
@@ -92,13 +94,12 @@ TEST_F(AssetEntryTest, InvalidateRefsInvalidatesAllActiveRefs) {
     EXPECT_THROW(ref2->data(), std::runtime_error);
 }
 
-
-TEST_F(AssetEntryTest, InvalidateRefsDoesNotCrashWithNoRefs) {
+TEST_F(AssetEntryTest, InvalidateRefs_WithNoActiveRefs_DoesNotThrow) {
     auto entry = makeEntry("hello");
     EXPECT_NO_THROW(entry->invalidateRefs());
 }
 
-TEST_F(AssetEntryTest, InvalidateRefsSkipsExpiredRefs) {
+TEST_F(AssetEntryTest, InvalidateRefs_WithExpiredRefs_SkipsExpiredRefs) {
     auto entry = makeEntry("hello");
     {
         auto ref = entry->createRef();
@@ -108,7 +109,7 @@ TEST_F(AssetEntryTest, InvalidateRefsSkipsExpiredRefs) {
     EXPECT_NO_THROW(entry->invalidateRefs());
 }
 
-TEST_F(AssetEntryTest, RefRemainsAliveAfterInvalidation) {
+TEST_F(AssetEntryTest, InvalidateRefs_WithActiveRef_DoesNotNullThePointer) {
     // the shared_ptr should still be valid even though the contents are nulled
     auto entry = makeEntry("hello");
     auto ref = entry->createRef();
