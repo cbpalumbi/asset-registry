@@ -3,13 +3,11 @@
 
 #include <cstdint>
 #include <memory>
-#include <chrono>
 #include <span>
 #include <unordered_map>
 #include <filesystem>
 #include <list>
 
-using timestamp = std::chrono::time_point<std::chrono::system_clock>;
 namespace fs = std::filesystem;
 class AssetRef;
 
@@ -25,7 +23,6 @@ class AssetEntry : public std::enable_shared_from_this<AssetEntry> {
 
     // {id, ref} - id is unique within this AssetEntry
     std::unordered_map<uint32_t, std::weak_ptr<AssetRef>> refs;
-    std::optional<timestamp> lastRefFreedAt;
 
     int16_t numRefsLifetime;
     //bool isInCache;
@@ -36,7 +33,6 @@ public:
 
     std::shared_ptr<AssetRef> createRef();
     void freeRef(const AssetRef& ref);
-    std::optional<std::chrono::duration<double>> getTimeSinceLastRefFreed() const;
     std::span<const std::byte> data() const;
     size_t getRefCount() const;
     uint32_t getAssetSize() const;

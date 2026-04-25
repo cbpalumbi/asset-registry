@@ -63,6 +63,18 @@ TEST_F(AssetEntryTest, GetData_WithValidEntry_ReturnsSameMemoryAddress) {
 
 #pragma region GetRefCount
 
+// Test that a ref created and immediately destroyed doesn't leave dangling state
+TEST_F(AssetEntryTest, GetRefCount_AfterSingleRefFreed_ReturnsZero) {
+    const auto entry = makeEntry("ref_immediate_destroy");
+
+    {
+        const auto ref = entry->createRef();
+        EXPECT_EQ(entry->getRefCount(), 1);
+    } // destructor calls freeRef via RAII
+
+    EXPECT_EQ(entry->getRefCount(), 0);
+}
+
 TEST_F(AssetEntryTest, GetRefCount_AfterRefFreed_ReturnsCorrectCount) {
     const auto entry = makeEntry("ref_test");
     EXPECT_EQ(entry->getRefCount(), 0);
@@ -77,6 +89,17 @@ TEST_F(AssetEntryTest, GetRefCount_AfterRefFreed_ReturnsCorrectCount) {
     } // ref2 destructor will call freeRef again via RAII
 
     EXPECT_EQ(entry->getRefCount(), 0);
+}
+
+// Test that moving a ref doesn't double-free or corrupt the ref count
+TEST_F(AssetEntryTest, GetRefCount_AfterRefMoved_RefCountUnchanged) {
+    const auto entry = makeEntry("ref_move");
+
+    auto ref1 = entry->createRef();
+    EXPECT_EQ(entry->getRefCount(), 1);
+
+    auto ref2 = std::move(ref1); // ref1 is now null, ref2 owns it
+    EXPECT_EQ(entry->getRefCount(), 1); // should still be 1, not 0 or 2
 }
 
 #pragma endregion

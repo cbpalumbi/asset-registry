@@ -33,16 +33,6 @@ void AssetEntry::freeRef(const AssetRef& ref) {
     }
 }
 
-std::optional<std::chrono::duration<double> > AssetEntry::getTimeSinceLastRefFreed() const {
-
-    if (lastRefFreedAt) {
-        return std::chrono::system_clock::now() - lastRefFreedAt.value();
-    }
-
-    std::cout << "No refs for this asset have ever been freed." << "\n";
-    return std::nullopt;
-}
-
 std::span<const std::byte> AssetEntry::data() const {
     return std::span(memPtr.get(), assetSize);
 }

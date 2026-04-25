@@ -6,7 +6,6 @@
 
 #include "AssetEntry.h"
 
-class AssetRefTests;
 
 class AssetRef {
     friend class AssetEntry;

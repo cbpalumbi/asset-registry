@@ -84,6 +84,12 @@ TEST_F(RegistryTest, Load_SameAssetAgain_ReturnsNewAssetRef) {
     EXPECT_NE(firstRequest->get(), secondRequest->get());
 }
 
+TEST_F(RegistryTest, Load_WithTooLargeFile_ReturnsNullopt) {
+    const auto file = createSizedFile("file1.cache_tmp", registry.CACHE_CAPACITY + 1);
+    const auto ref = registry.load(file);
+    EXPECT_FALSE(ref.has_value());
+}
+
 TEST_F(RegistryTest, Load_AssetWithSizeEqualToCacheCapacity_Succeeds) {
     const auto file1 = createSizedFile("file1.cache_tmp", registry.CACHE_CAPACITY);
 
