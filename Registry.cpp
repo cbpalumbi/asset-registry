@@ -1,9 +1,9 @@
 ﻿#include "Registry.h"
+#include "CacheError.h"
 
 #include <iostream>
 #include <fstream>
 #include <ranges>
-
 
 Registry::Registry() {
     std::cout << "Registry created\n";
@@ -18,7 +18,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
 
     if (!isValidPath(path)) {
         std::cout << "Path " << path << "is not valid." << "\n";
-        return std::nullopt;
+        throw AssetNotFoundError(path);
     }
 
     // Check if the asset is in the cache already.
@@ -38,14 +38,14 @@ std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
 
     const auto fileSize = std::filesystem::file_size(path);
     if (fileSize > CACHE_CAPACITY) {
-        return std::nullopt; // TODO: Add CacheError to returned
+        throw AssetSizeExceedsCacheCapacityError(path);
     }
 
     // otherwise, attempt to load into cache normally
     if (canFitInCacheWithoutEviction(fileSize)) {
         auto assetRef = loadIntoCache(path);
         if (!assetRef) {
-            return std::nullopt;
+            throw CacheError("An error occurred when loading the asset into the cache.");
         }
         return assetRef;
     }
@@ -55,7 +55,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
 
     // TODO: potential optimization to minimize list traversal - combine size check?
     if (evictableList.empty() || !canFitInCacheWithEviction(fileSize)) {
-        return std::nullopt; // TODO: Add CacheError returned
+        throw NoSpaceInCacheError(path);
     }
 
     uintmax_t emptySpaceInCache = CACHE_CAPACITY - getCurrentUsage();
@@ -83,8 +83,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::loadIntoCache(fs::path const 
     std::ifstream stream;
     stream.open(path, std::ios::binary);
     if (stream.fail()) {
-        std::cout << "Error opening file " << path << "\n";
-        return std::nullopt;
+        throw CacheError("Error reading file: " + path.string());
     }
 
     auto memPtr = std::make_unique<std::byte[]>(fileSize);

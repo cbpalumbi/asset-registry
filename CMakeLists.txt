@@ -27,7 +27,9 @@ add_executable(AssetRegistry main.cpp
         AssetEntry.cpp
         AssetEntry.h
         AssetRef.cpp
-        AssetRef.h)
+        AssetRef.h
+        CacheError.h
+)
 
 enable_testing()
 
@@ -39,6 +41,7 @@ add_executable(
         AssetRef.cpp
         tests/AssetEntryTests.cpp
         tests/AssetRefTests.cpp
+        CacheError.h
 )
 target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(

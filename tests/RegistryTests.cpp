@@ -1,5 +1,7 @@
 ﻿#include "gtest/gtest.h"
 #include "Registry.h"
+#include "CacheError.h"
+
 #include <fstream>
 #include <filesystem>
 
@@ -67,9 +69,8 @@ TEST_F(RegistryTest, Load_ValidFile_ReturnsRef) {
     EXPECT_NE(result->get(), nullptr);
 }
 
-TEST_F(RegistryTest, Load_MissingFile_ReturnsNullopt) {
-    const auto result = registry.load("does_not_exist.bin");
-    EXPECT_FALSE(result.has_value());
+TEST_F(RegistryTest, Load_MissingFile_ThrowsCacheError) {
+   EXPECT_THROW(registry.load("does_not_exist.bin"), AssetNotFoundError);
 }
 
 TEST_F(RegistryTest, Load_SameAssetAgain_ReturnsNewAssetRef) {
@@ -86,8 +87,7 @@ TEST_F(RegistryTest, Load_SameAssetAgain_ReturnsNewAssetRef) {
 
 TEST_F(RegistryTest, Load_WithTooLargeFile_ReturnsNullopt) {
     const auto file = createSizedFile("file1.cache_tmp", registry.CACHE_CAPACITY + 1);
-    const auto ref = registry.load(file);
-    EXPECT_FALSE(ref.has_value());
+    EXPECT_THROW(registry.load(file), AssetSizeExceedsCacheCapacityError);
 }
 
 TEST_F(RegistryTest, Load_AssetWithSizeEqualToCacheCapacity_Succeeds) {
@@ -103,9 +103,8 @@ TEST_F(RegistryTest, Load_WhenEvictionImpossible_ReturnsNullopt) {
     const auto file2 = createSizedFile("file2.cache_tmp", 1);
 
     const auto ref1 = registry.load(file1);
-    const auto ref2 = registry.load(file2);
 
-    ASSERT_FALSE(ref2.has_value());
+    EXPECT_THROW(registry.load(file2), NoSpaceInCacheError);
 }
 
 TEST_F(RegistryTest, Load_WithAssetEviction_EvictedAssetIsRemovedFromEntries) {
