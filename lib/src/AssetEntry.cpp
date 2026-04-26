@@ -10,7 +10,7 @@ AssetEntry::AssetEntry(const fs::path &path, std::unique_ptr<std::byte[]> memPtr
 }
 
 AssetEntry::~AssetEntry() {
-    std::cout << "AssetEntry destroyed: " << path << std::endl;
+    //std::cout << "AssetEntry destroyed: " << path << std::endl;
 }
 
 std::shared_ptr<AssetRef> AssetEntry::createRef() {
