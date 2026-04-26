@@ -1,5 +1,4 @@
 ﻿#include "AssetRef.h"
-
 #include "AssetEntry.h"
 
 
