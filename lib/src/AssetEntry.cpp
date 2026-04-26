@@ -9,6 +9,10 @@ AssetEntry::AssetEntry(const fs::path &path, std::unique_ptr<std::byte[]> memPtr
     : path(path), memPtr(std::move(memPtr)), assetSize(assetSize), numRefsLifetime(0), registryLruList(registryLruList) {
 }
 
+AssetEntry::~AssetEntry() {
+    std::cout << "AssetEntry destroyed: " << path << std::endl;
+}
+
 std::shared_ptr<AssetRef> AssetEntry::createRef() {
     numRefsLifetime++;
     // using numRefsLifetime to create a unique id for this ref

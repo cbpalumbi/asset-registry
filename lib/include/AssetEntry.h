@@ -30,6 +30,7 @@ class AssetEntry : public std::enable_shared_from_this<AssetEntry> {
 
 public:
     AssetEntry(const fs::path &path, std::unique_ptr<std::byte[]> memPtr, uint32_t assetSize, std::list<fs::path>* registryLruList);
+    ~AssetEntry();
 
     std::shared_ptr<AssetRef> createRef();
     void freeRef(const AssetRef& ref);

@@ -6,6 +6,7 @@
 
 #include <unordered_map>
 #include <filesystem>
+#include <iostream>
 #include <ranges>
 
 namespace fs = std::filesystem;
@@ -29,7 +30,7 @@ public:
         auto bytes = result.value()->data();
 
         Image img = LoadImageFromMemory(".png",
-            reinterpret_cast<const unsigned char *>(bytes.data()), (int)bytes.size());
+            reinterpret_cast<const unsigned char *>(bytes.data()), static_cast<int>(bytes.size()));
         Texture2D tex = LoadTextureFromImage(img);
         UnloadImage(img);
 
@@ -38,7 +39,9 @@ public:
     }
 
     ~TextureCache() {
-        for (const auto &tex: gpuTextures | std::views::values)
+        for (const auto &tex: gpuTextures | std::views::values) {
+            std::cout << "Unloading GPU texture."<< std::endl;
             UnloadTexture(tex);
+        }
     }
 };
