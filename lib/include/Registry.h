@@ -16,7 +16,7 @@ public:
 
     std::optional<std::shared_ptr<AssetRef>> load(fs::path const &path);
     uint32_t getCurrentUsage() const;
-    const uint32_t CACHE_CAPACITY = 2048; // 2 KB for now
+    const uint32_t CACHE_CAPACITY = 1024 * 1024 * 50; // 50MB
 private:
 
     std::unordered_map<fs::path, std::shared_ptr<AssetEntry>> entries;

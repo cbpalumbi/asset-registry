@@ -9,6 +9,7 @@ FetchContent_MakeAvailable(raylib)
 
 add_executable(AssetRegistryGame
         main.cpp
+        TextureCache.h
 )
 
 target_link_libraries(AssetRegistryGame PRIVATE AssetRegistryLib raylib)
