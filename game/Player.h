@@ -18,12 +18,16 @@ struct Player {
     bool facingLeft;
     std::string currentFolder;
     std::string lastMovingFolder = "Rogue Animationset/Idle";
+    Texture2D currentTexture = {};
+    std::string currentTexturePath;
 };
 
+void drawPlayer(Player& player, Vector2 worldOrigin);
+void unloadPlayer(Player& player);
 std::string getAnimationFolder(const Player& player);
 std::string getFramePath(const Player& player);
 void updatePlayer(Player& player, float dt);
-void drawPlayer(const Player& player, TextureCache& textureCache, Vector2 worldOrigin);
+
 
 
 #endif //ASSETREGISTRY_PLAYER_H

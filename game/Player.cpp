@@ -38,7 +38,6 @@ void updatePlayer(Player& player, float dt) {
 
     player.moving = (movement.x != 0 || movement.y != 0);
 
-    // Update lastMovingFolder before getAnimationFolder is called
     if (player.moving) {
         switch (player.direction) {
             case PlayerDirection::Down:     player.lastMovingFolder = "Rogue Animationset/DownWalk"; break;
@@ -49,7 +48,6 @@ void updatePlayer(Player& player, float dt) {
         }
     }
 
-    // Normalize diagonal movement
     if (movement.x != 0 && movement.y != 0) {
         movement.x *= 0.707f;
         movement.y *= 0.707f;
@@ -58,7 +56,6 @@ void updatePlayer(Player& player, float dt) {
     player.position.x += movement.x * player.SPEED * dt;
     player.position.y += movement.y * player.SPEED * dt;
 
-    // Reset frame only when animation folder changes
     std::string newFolder = getAnimationFolder(player);
     if (newFolder != player.currentFolder) {
         player.currentFolder = newFolder;
@@ -66,7 +63,6 @@ void updatePlayer(Player& player, float dt) {
         player.frameTimer = 0;
     }
 
-    // Advance frame
     player.frameTimer += dt;
     if (player.frameTimer >= player.FRAME_DURATION) {
         player.frameTimer = 0;
@@ -74,20 +70,30 @@ void updatePlayer(Player& player, float dt) {
     }
 }
 
-void drawPlayer(const Player& player, TextureCache& textureCache, Vector2 worldOrigin) {
-    const Texture2D tex = textureCache.get(getFramePath(player));
+void drawPlayer(Player& player, Vector2 worldOrigin) {
+    std::string path = getFramePath(player);
 
-    // Flip horizontally for left-facing directions
+    if (path != player.currentTexturePath) {
+        if (!player.currentTexturePath.empty())
+            UnloadTexture(player.currentTexture);
+        player.currentTexture = LoadTexture(path.c_str());
+        player.currentTexturePath = path;
+    }
+
     if (player.facingLeft) {
-        DrawTextureRec(tex,
-            { 0, 0, -32, 32 }, // negative width flips the texture
+        DrawTextureRec(player.currentTexture,
+            { 0, 0, -32, 32 },
             { player.position.x + worldOrigin.x, player.position.y + worldOrigin.y },
             WHITE);
     } else {
-        DrawTexture(tex,
+        DrawTexture(player.currentTexture,
             player.position.x + worldOrigin.x,
             player.position.y + worldOrigin.y,
             WHITE);
     }
 }
 
+void unloadPlayer(Player& player) {
+    if (!player.currentTexturePath.empty())
+        UnloadTexture(player.currentTexture);
+}

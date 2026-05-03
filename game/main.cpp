@@ -24,18 +24,24 @@ Vector2 getPlayerFacingDirection(const Player& player) {
     }
 }
 
-bool isInFrustum(const Frustum& frustum, Vector2 objectPos) {
+bool isInFrustum(const Frustum& frustum, Vector2 objectPos, float objectRadius = 24.0f) {
     Vector2 toObject = {
         objectPos.x - frustum.origin.x,
         objectPos.y - frustum.origin.y
     };
     float dist = sqrtf(toObject.x * toObject.x + toObject.y * toObject.y);
     if (dist < 0.001f) return true;
-    if (dist > frustum.range) return false;
+
+    // If the object's radius reaches into the frustum range at all
+    if (dist - objectRadius > frustum.range) return false;
 
     Vector2 toObjectNorm = { toObject.x / dist, toObject.y / dist };
     float dot = frustum.direction.x * toObjectNorm.x + frustum.direction.y * toObjectNorm.y;
-    return dot >= cosf(frustum.halfAngle);
+    float cosHalf = cosf(frustum.halfAngle);
+
+    // Either center is inside the cone, or the object is close enough
+    // that its radius overlaps the cone boundary
+    return dot >= cosHalf - (objectRadius / dist);
 }
 
 void drawFrustum(const Frustum& frustum, Vector2 worldOrigin) {
@@ -245,18 +251,18 @@ int main() {
 
             // --- Draw scene into render texture ---
             BeginTextureMode(renderTarget);
-                ClearBackground(LIME);
-                for (const auto& [position, assetPath] : world) {
-                    const std::string fullPath = assetsAbsolutePath + assetPath;
-                    const Vector2 screenPos = {
-                        position.x + WORLD_ORIGIN.x,
-                        position.y + WORLD_ORIGIN.y
-                    };
-                    // Always draw full color into render texture — shader handles desaturation
-                    const Texture2D tex = textureCache.get(fullPath);
-                    DrawTexture(tex, screenPos.x, screenPos.y, WHITE);
-                }
-                drawPlayer(player, textureCache, WORLD_ORIGIN);
+            ClearBackground(LIME);
+            for (const auto& [position, assetPath] : world) {
+                const std::string fullPath = assetsAbsolutePath + assetPath;
+                const Vector2 screenPos = {
+                    position.x + WORLD_ORIGIN.x,
+                    position.y + WORLD_ORIGIN.y
+                };
+                // Always draw full color into render texture — shader handles desaturation
+                const Texture2D tex = textureCache.get(fullPath);
+                DrawTexture(tex, screenPos.x, screenPos.y, WHITE);
+            }
+            drawPlayer(player, WORLD_ORIGIN);
             EndTextureMode();
 
             // --- Composite render texture to screen through shader ---
@@ -270,6 +276,31 @@ int main() {
                         WHITE);
                 EndShaderMode();
 
+                // --- Cache HUD ---
+                const auto cacheEntries = registry.getCurrentEntryNames();
+                const uint32_t cacheUsage = registry.getCurrentUsage();
+
+                const int hudX = 768 - 260;
+                int hudY = 10;
+                const int lineHeight = 14;
+                const int fontSize = 10;
+
+                // Background box
+                int boxHeight = 20 + (cacheEntries.size() * lineHeight);
+                DrawRectangle(hudX - 6, hudY - 4, 260, boxHeight, { 0, 0, 0, 160 });
+
+                // Header
+                std::string header = "TextureCache (" + std::to_string(cacheUsage) + " bytes)";
+                DrawText(header.c_str(), hudX, hudY, fontSize, YELLOW);
+                hudY += 18;
+
+                // Entry list — just the filename, not the full path
+                for (const auto& entry : cacheEntries) {
+                    std::string name = entry.substr(entry.find_last_of('/') + 1);
+                    DrawText(name.c_str(), hudX, hudY, fontSize, WHITE);
+                    hudY += lineHeight;
+                }
+
                 // Draw frustum outline on top (no shader)
                 drawFrustumFilled(frustum, WORLD_ORIGIN, { 0,0,0,0 }, BLACK);
             EndDrawing();
@@ -279,6 +310,7 @@ int main() {
         for (auto& [path, tex] : grayTextures) UnloadTexture(tex);
         UnloadShader(frustumShader);
         UnloadRenderTexture(renderTarget);
+        unloadPlayer(player);
 
     } catch (const CacheError& e) {
         TraceLog(LOG_ERROR, "CacheError: %s", e.what());

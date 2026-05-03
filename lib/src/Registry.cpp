@@ -118,6 +118,14 @@ uint32_t Registry::getCurrentUsage() const {
     return sum;
 }
 
+std::vector<std::string> Registry::getCurrentEntryNames() const {
+    std::vector<std::string> names;
+    for (const auto &path: entries | std::views::keys) {
+        names.push_back(path.string());
+    }
+    return names;
+}
+
 uintmax_t Registry::getSizeOfEvictableBytes() const {
     uintmax_t sum = 0;
     for (auto p : lruList) {

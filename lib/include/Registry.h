@@ -14,7 +14,8 @@ friend class RegistryTest;
 public:
     std::optional<std::shared_ptr<AssetRef>> load(fs::path const &path);
     [[nodiscard]] uint32_t getCurrentUsage() const;
-    const uint32_t CACHE_CAPACITY = 1024 * 1024 * 50; // 50MB
+    [[nodiscard]] std::vector<std::string> getCurrentEntryNames() const;
+    const uint32_t CACHE_CAPACITY = 1024 * 1024; // 1MB
 private:
 
     std::unordered_map<fs::path, std::shared_ptr<AssetEntry>> entries;
