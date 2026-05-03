@@ -27,6 +27,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
         // but it hadn't been evicted yet
         if (entries[path]->lruIterator) {
             lruList.erase(*entries[path]->lruIterator);
+            entries[path]->lruIterator = std::nullopt;
         }
         return ref;
     }
@@ -54,11 +55,9 @@ std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
     }
 
     uintmax_t emptySpaceInCache = CACHE_CAPACITY - getCurrentUsage();
-    for (const auto& item : evictableList) {
+    for (auto it = evictableList.rbegin(); it != evictableList.rend(); ++it) {
         // evict the item
-        emptySpaceInCache += evictAssetByPath(item);
-        // pop from the back of the lruList
-        lruList.pop_back();
+        emptySpaceInCache += evictAssetByPath(*it);;
 
         // break out of the loop once we've evicted enough to fit the new item
         if (emptySpaceInCache >= fileSize) break;
@@ -157,6 +156,12 @@ uintmax_t Registry::evictAsset(std::shared_ptr<AssetEntry> entry) {
     entry->memPtr = nullptr;
 
     const auto tmpSize = entry->getAssetSize();
+
+    // remove from lruList if still there
+    if (entry->lruIterator) {
+        lruList.erase(*entry->lruIterator);
+        entry->lruIterator = std::nullopt;
+    }
 
     // destroy the AssetEntry
     entries.erase(entry->path);

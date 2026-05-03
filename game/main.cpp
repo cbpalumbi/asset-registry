@@ -323,7 +323,7 @@ int main() {
                 hudY += 18;
 
                 for (const auto& entry : cacheEntries) {
-                    std::string name = entry.substr(entry.find_last_of('/') + 1);
+                    std::string name = entry.substr(entry.find_last_of("/\\") + 1);
                     DrawText(name.c_str(), hudX, hudY, fontSize, WHITE);
                     hudY += lineHeight;
                 }

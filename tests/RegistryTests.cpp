@@ -194,6 +194,44 @@ TEST_F(RegistryTest, Load_WithMultipleEvictionsNeeded_EvictsOnlyEnoughToFitNewAs
     EXPECT_EQ(result.back(), path_d);  // fileD, least recently freed (of those still in the registry)
 }
 
+TEST_F(RegistryTest, Load_WithEviction_EvictsLeastRecentlyFreedFirst) {
+    // fill cache with three third-sized assets
+    const size_t thirdCap = registry.CACHE_CAPACITY / 3;
+    const auto fileA = createSizedFile("evict_order_a.cache_tmp", thirdCap);
+    const auto fileB = createSizedFile("evict_order_b.cache_tmp", thirdCap);
+    const auto fileC = createSizedFile("evict_order_c.cache_tmp", thirdCap);
+
+    // load all three, then free in order A, B, C
+    // so A is least recently freed (back of lruList), C is most recently freed (front)
+    { const auto ref = registry.load(fileA); }
+    { const auto ref = registry.load(fileB); }
+    { const auto ref = registry.load(fileC); }
+
+    // verify lruList order before eviction: front=C, back=A
+    {
+        const auto evictable = DebugTryGetEvictableList();
+        ASSERT_EQ(evictable.size(), 3u);
+        EXPECT_EQ(evictable.front(), fileC); // most recently freed
+        EXPECT_EQ(evictable.back(),  fileA); // least recently freed
+    }
+
+    // now load a third-sized asset — only needs to evict one (A, the oldest)
+    const auto fileD = createSizedFile("evict_order_d.cache_tmp", thirdCap);
+    const auto ref = registry.load(fileD);
+
+    // A should be gone, B and C should still be in the evictable list
+    const auto evictable = DebugTryGetEvictableList();
+    EXPECT_EQ(evictable.size(), 2u);
+    EXPECT_EQ(evictable.front(), fileC); // C still most recently freed
+    EXPECT_EQ(evictable.back(),  fileB); // B now least recently freed
+
+    // A should no longer be in the registry at all
+    EXPECT_FALSE(DebugHasEntryInCache(fileA));
+    EXPECT_TRUE(DebugHasEntryInCache(fileB));
+    EXPECT_TRUE(DebugHasEntryInCache(fileC));
+    EXPECT_TRUE(DebugHasEntryInCache(fileD));
+}
+
 #pragma endregion
 
 #pragma region CanFitInCacheWithEviction
