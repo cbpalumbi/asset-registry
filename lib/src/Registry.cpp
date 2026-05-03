@@ -5,11 +5,6 @@
 #include <fstream>
 #include <ranges>
 
-Registry::Registry() {
-    std::cout << "Registry created\n";
-    std::cout << "Num entries: " << entries.size() << "\n";
-}
-
 bool isValidPath(const fs::path& p) {
     return fs::exists(p) && !fs::is_directory(p);
 }
@@ -77,7 +72,6 @@ std::optional<std::shared_ptr<AssetRef>> Registry::loadIntoCache(fs::path const 
 
     // determine the size of the file
     auto fileSize = std::filesystem::file_size(path);
-    std::cout << "Filesize is " << fileSize << "\n";
 
     // open the file with a flag specifying mode as binary
     std::ifstream stream;

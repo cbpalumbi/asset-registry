@@ -6,7 +6,6 @@
 
 #include "AssetEntry.h"
 
-
 class AssetRef {
     friend class AssetEntry;
     friend class AssetRefTests;
@@ -15,11 +14,11 @@ class AssetRef {
     uint32_t id;
 
     // RAII constructor
-    AssetRef(std::shared_ptr<AssetEntry> assetEntry, const uint32_t id) : assetEntry(assetEntry), id(id) {};
+    AssetRef(const std::shared_ptr<AssetEntry> &assetEntry, const uint32_t id) : assetEntry(assetEntry), id(id) {};
     void invalidate();
 
 public:
-    std::span<const std::byte> data() const;
+    [[nodiscard]] std::span<const std::byte> data() const;
     // RAII destructor, public so shared_ptr can use
     ~AssetRef() { if (assetEntry) assetEntry->freeRef(*this); }
 };

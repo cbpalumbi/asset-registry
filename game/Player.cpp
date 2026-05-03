@@ -14,18 +14,18 @@ std::string getAnimationFolder(const Player& player) {
 
 std::string getFramePath(const Player& player) {
     const std::string assetsAbsolutePath = "C:/Users/Bella/CLionProjects/AssetRegistry/game/assets/";
-    std::string folder = assetsAbsolutePath + getAnimationFolder(player);
-    std::string frameName = folder.substr(folder.find_last_of('/') + 1);
+    const std::string folder = assetsAbsolutePath + getAnimationFolder(player);
+    const std::string frameName = folder.substr(folder.find_last_of('/') + 1);
     return folder + "/" + frameName + std::to_string(player.currentFrame + 1) + ".png";
 }
 
 void updatePlayer(Player& player, float dt) {
     Vector2 movement = { 0, 0 };
 
-    bool up    = IsKeyDown(KEY_W);
-    bool down  = IsKeyDown(KEY_S);
-    bool left  = IsKeyDown(KEY_A);
-    bool right = IsKeyDown(KEY_D);
+    const bool up    = IsKeyDown(KEY_W);
+    const bool down  = IsKeyDown(KEY_S);
+    const bool left  = IsKeyDown(KEY_A);
+    const bool right = IsKeyDown(KEY_D);
 
     if (up && right)        { movement = { 1, -1 };  player.direction = PlayerDirection::UpSide;   player.facingLeft = false; }
     else if (up && left)    { movement = { -1, -1 }; player.direction = PlayerDirection::UpSide;   player.facingLeft = true;  }
@@ -74,8 +74,8 @@ void updatePlayer(Player& player, float dt) {
     }
 }
 
-void drawPlayer(Player& player, TextureCache& textureCache, Vector2 worldOrigin) {
-    Texture2D tex = textureCache.get(getFramePath(player));
+void drawPlayer(const Player& player, TextureCache& textureCache, Vector2 worldOrigin) {
+    const Texture2D tex = textureCache.get(getFramePath(player));
 
     // Flip horizontally for left-facing directions
     if (player.facingLeft) {

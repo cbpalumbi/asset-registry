@@ -27,7 +27,7 @@ public:
         if (!result.has_value())
             throw CacheError("Failed to load asset: " + path.string());
 
-        auto bytes = result.value()->data();
+        const auto bytes = result.value()->data();
 
         Image img = LoadImageFromMemory(".png",
             reinterpret_cast<const unsigned char *>(bytes.data()), static_cast<int>(bytes.size()));

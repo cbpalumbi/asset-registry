@@ -12,10 +12,8 @@ namespace fs = std::filesystem;
 class Registry {
 friend class RegistryTest;
 public:
-    Registry();
-
     std::optional<std::shared_ptr<AssetRef>> load(fs::path const &path);
-    uint32_t getCurrentUsage() const;
+    [[nodiscard]] uint32_t getCurrentUsage() const;
     const uint32_t CACHE_CAPACITY = 1024 * 1024 * 50; // 50MB
 private:
 
@@ -34,8 +32,8 @@ private:
     // returns size of evicted asset in bytes
     uintmax_t evictAssetByPath(fs::path const &path);
     uintmax_t evictAsset(std::shared_ptr<AssetEntry> entry);
-    bool hasEntryInCache(fs::path const &path) const;
-    uintmax_t getSizeOfEvictableBytes() const;
+    [[nodiscard]] bool hasEntryInCache(fs::path const &path) const;
+    [[nodiscard]] uintmax_t getSizeOfEvictableBytes() const;
     std::optional<std::shared_ptr<AssetEntry>> getEntryByPath(fs::path const &path);
 };
 

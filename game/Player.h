@@ -23,7 +23,7 @@ struct Player {
 std::string getAnimationFolder(const Player& player);
 std::string getFramePath(const Player& player);
 void updatePlayer(Player& player, float dt);
-void drawPlayer(Player& player, TextureCache& textureCache, Vector2 worldOrigin);
+void drawPlayer(const Player& player, TextureCache& textureCache, Vector2 worldOrigin);
 
 
 #endif //ASSETREGISTRY_PLAYER_H
