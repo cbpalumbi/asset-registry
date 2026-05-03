@@ -26,8 +26,8 @@ private:
     std::list<fs::path> lruList;
 
     std::optional<std::shared_ptr<AssetRef>> loadIntoCache(fs::path const &path);
-    bool canFitInCacheWithoutEviction(uintmax_t fileSize) const;
-    bool canFitInCacheWithEviction(uintmax_t fileSize) const;
+    [[nodiscard]] bool canFitInCacheWithoutEviction(uintmax_t fileSize) const;
+    [[nodiscard]] bool canFitInCacheWithEviction(uintmax_t fileSize) const;
     std::list<fs::path> tryGetEvictableList();
     // returns size of evicted asset in bytes
     uintmax_t evictAssetByPath(fs::path const &path);
