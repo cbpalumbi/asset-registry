@@ -12,6 +12,8 @@ add_executable(AssetRegistryGame
         TextureCache.h
         Player.cpp
         Player.h
+        World.cpp
+        World.h
 )
 
 target_link_libraries(AssetRegistryGame PRIVATE AssetRegistryLib raylib)

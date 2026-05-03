@@ -3,17 +3,17 @@
 std::string getAnimationFolder(const Player& player) {
     if (!player.moving) return player.lastMovingFolder;
     switch (player.direction) {
-        case PlayerDirection::Down:     return "game/assets/Rogue Animationset/DownWalk";
-        case PlayerDirection::DownSide: return "game/assets/Rogue Animationset/DownSideWalk";
-        case PlayerDirection::Side:     return "game/assets/Rogue Animationset/SideWalk";
-        case PlayerDirection::UpSide:   return "game/assets/Rogue Animationset/UpSideWalk";
-        case PlayerDirection::Up:       return "game/assets/Rogue Animationset/UpWalk";
-        default:                        return "game/assets/Rogue Animationset/Idle";
+        case PlayerDirection::Down:     return "Rogue Animationset/DownWalk";
+        case PlayerDirection::DownSide: return "Rogue Animationset/DownSideWalk";
+        case PlayerDirection::Side:     return "Rogue Animationset/SideWalk";
+        case PlayerDirection::UpSide:   return "Rogue Animationset/UpSideWalk";
+        case PlayerDirection::Up:       return "Rogue Animationset/UpWalk";
+        default:                        return "Rogue Animationset/Idle";
     }
 }
 
 std::string getFramePath(const Player& player) {
-    const std::string assetsAbsolutePath = "C:/Users/Bella/CLionProjects/AssetRegistry/";
+    const std::string assetsAbsolutePath = "C:/Users/Bella/CLionProjects/AssetRegistry/game/assets/";
     std::string folder = assetsAbsolutePath + getAnimationFolder(player);
     std::string frameName = folder.substr(folder.find_last_of('/') + 1);
     return folder + "/" + frameName + std::to_string(player.currentFrame + 1) + ".png";
@@ -41,11 +41,11 @@ void updatePlayer(Player& player, float dt) {
     // Update lastMovingFolder before getAnimationFolder is called
     if (player.moving) {
         switch (player.direction) {
-            case PlayerDirection::Down:     player.lastMovingFolder = "game/assets/Rogue Animationset/DownWalk"; break;
-            case PlayerDirection::DownSide: player.lastMovingFolder = "game/assets/Rogue Animationset/DownSideWalk"; break;
-            case PlayerDirection::Side:     player.lastMovingFolder = "game/assets/Rogue Animationset/SideWalk"; break;
-            case PlayerDirection::UpSide:   player.lastMovingFolder = "game/assets/Rogue Animationset/UpSideWalk"; break;
-            case PlayerDirection::Up:       player.lastMovingFolder = "game/assets/Rogue Animationset/UpWalk"; break;
+            case PlayerDirection::Down:     player.lastMovingFolder = "Rogue Animationset/DownWalk"; break;
+            case PlayerDirection::DownSide: player.lastMovingFolder = "Rogue Animationset/DownSideWalk"; break;
+            case PlayerDirection::Side:     player.lastMovingFolder = "Rogue Animationset/SideWalk"; break;
+            case PlayerDirection::UpSide:   player.lastMovingFolder = "Rogue Animationset/UpSideWalk"; break;
+            case PlayerDirection::Up:       player.lastMovingFolder = "Rogue Animationset/UpWalk"; break;
         }
     }
 

@@ -17,7 +17,7 @@ struct Player {
     const float SPEED = 150.0f;
     bool facingLeft;
     std::string currentFolder;
-    std::string lastMovingFolder = "game/assets/Rogue Animationset/Idle";
+    std::string lastMovingFolder = "Rogue Animationset/Idle";
 };
 
 std::string getAnimationFolder(const Player& player);
