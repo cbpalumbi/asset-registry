@@ -24,8 +24,8 @@ public:
 
 class NoSpaceInCacheError : public CacheError {
 public:
-    explicit NoSpaceInCacheError(const fs::path& path)
-        : CacheError("There is no space in the cache for asset " + path.string()) {}
+    explicit NoSpaceInCacheError(const fs::path& path, const uint32_t fileSize)
+        : CacheError("There is no space in the cache for asset " + path.string() + " with size " + std::to_string(fileSize)) {}
 };
 
 class EvictionError : public CacheError {

@@ -5,6 +5,7 @@
 #include <cmath>
 #include <unordered_map>
 #include <string>
+#include <unordered_set>
 
 struct Frustum {
     Vector2 origin;
@@ -202,6 +203,8 @@ int main() {
         // Render texture to draw the whole scene into before applying shader
         RenderTexture2D renderTarget = LoadRenderTexture(768, 432);
 
+        std::unordered_set<std::string> inFrustumLastFrame;
+
         while (!WindowShouldClose()) {
             float dt = GetFrameTime();
             updatePlayer(player, dt);
@@ -215,32 +218,52 @@ int main() {
             frustum.halfAngle = 35.0f * DEG2RAD;
             frustum.range     = 200.0f;
 
-            // Update gray texture cache
+            // Build canonical path map once per frame
+            std::unordered_map<std::string, fs::path> canonicalPaths;
+            for (const auto& [position, assetPath] : world)
+                canonicalPaths[assetPath] = fs::weakly_canonical(assetsAbsolutePath + assetPath);
+
+            // Build frustum membership sets
+            std::unordered_set<std::string> inFrustumThisFrame;
             std::unordered_map<std::string, bool> outsideThisFrame;
+
             for (const auto& [position, assetPath] : world) {
-                const std::string fullPath = assetsAbsolutePath + assetPath;
-                if (!isInFrustum(frustum, position))
-                    outsideThisFrame[fullPath] = true;
+                const std::string canonical = canonicalPaths[assetPath].string();
+                if (isInFrustum(frustum, position))
+                    inFrustumThisFrame.insert(canonical);
+                else
+                    outsideThisFrame[canonical] = true;
             }
+
+            // Release cache entries that just left the frustum
+            for (const auto& path : inFrustumLastFrame) {
+                if (!inFrustumThisFrame.contains(path))
+                    textureCache.release(path);
+            }
+
+            // Unload gray textures that just entered the frustum
             for (auto it = grayTextures.begin(); it != grayTextures.end(); ) {
-                if (outsideThisFrame.find(it->first) == outsideThisFrame.end()) {
+                if (!outsideThisFrame.contains(it->first)) {
                     UnloadTexture(it->second);
                     it = grayTextures.erase(it);
                 } else { ++it; }
             }
+
+            // Load gray textures for newly outside objects
             for (const auto& [path, _] : outsideThisFrame) {
-                if (grayTextures.find(path) == grayTextures.end())
+                if (!grayTextures.contains(path))
                     grayTextures[path] = makeGrayscaleTexture(path);
             }
 
+
+
             // Update shader uniforms with current frustum state
-            // Frustum origin is in screen space
             Vector2 screenOrigin = {
                 frustum.origin.x + WORLD_ORIGIN.x,
                 frustum.origin.y + WORLD_ORIGIN.y
             };
-            float origin[2] = { screenOrigin.x, 432.0f - screenOrigin.y }; // Y flipped for render texture
-            float dir[2]    = { frustum.direction.x, -frustum.direction.y }; // Y flipped for render texture
+            float origin[2] = { screenOrigin.x, 432.0f - screenOrigin.y };
+            float dir[2]    = { frustum.direction.x, -frustum.direction.y };
             float angle     = frustum.halfAngle;
             float range     = frustum.range;
 
@@ -251,27 +274,34 @@ int main() {
 
             // --- Draw scene into render texture ---
             BeginTextureMode(renderTarget);
-            ClearBackground(LIME);
-            for (const auto& [position, assetPath] : world) {
-                const std::string fullPath = assetsAbsolutePath + assetPath;
-                const Vector2 screenPos = {
-                    position.x + WORLD_ORIGIN.x,
-                    position.y + WORLD_ORIGIN.y
-                };
-                // Always draw full color into render texture — shader handles desaturation
-                const Texture2D tex = textureCache.get(fullPath);
-                DrawTexture(tex, screenPos.x, screenPos.y, WHITE);
-            }
-            drawPlayer(player, WORLD_ORIGIN);
+                ClearBackground(LIME);
+                for (const auto& [position, assetPath] : world) {
+                    const fs::path fullPath = canonicalPaths[assetPath];
+                    const std::string fullPathStr = fullPath.string();
+                    const Vector2 screenPos = {
+                        position.x + WORLD_ORIGIN.x,
+                        position.y + WORLD_ORIGIN.y
+                    };
+
+                    if (isInFrustum(frustum, position)) {
+                        if (!inFrustumLastFrame.contains(fullPathStr))
+                            textureCache.get(fullPath);
+                        DrawTexture(textureCache.peek(fullPath), screenPos.x, screenPos.y, WHITE);
+                    } else {
+                        DrawTexture(grayTextures[fullPathStr], screenPos.x, screenPos.y, WHITE);
+                    }
+                }
+                drawPlayer(player, WORLD_ORIGIN);
             EndTextureMode();
+
+            inFrustumLastFrame = inFrustumThisFrame;
 
             // --- Composite render texture to screen through shader ---
             BeginDrawing();
                 ClearBackground(BLACK);
                 BeginShaderMode(frustumShader);
-                    // RenderTexture is flipped vertically in raylib
                     DrawTextureRec(renderTarget.texture,
-                        { 0, 0, 768, -432 }, // negative height flips it
+                        { 0, 0, 768, -432 },
                         { 0, 0 },
                         WHITE);
                 EndShaderMode();
@@ -285,25 +315,23 @@ int main() {
                 const int lineHeight = 14;
                 const int fontSize = 10;
 
-                // Background box
                 int boxHeight = 20 + (cacheEntries.size() * lineHeight);
                 DrawRectangle(hudX - 6, hudY - 4, 260, boxHeight, { 0, 0, 0, 160 });
 
-                // Header
                 std::string header = "TextureCache (" + std::to_string(cacheUsage) + " bytes)";
                 DrawText(header.c_str(), hudX, hudY, fontSize, YELLOW);
                 hudY += 18;
 
-                // Entry list — just the filename, not the full path
                 for (const auto& entry : cacheEntries) {
                     std::string name = entry.substr(entry.find_last_of('/') + 1);
                     DrawText(name.c_str(), hudX, hudY, fontSize, WHITE);
                     hudY += lineHeight;
                 }
 
-                // Draw frustum outline on top (no shader)
                 drawFrustumFilled(frustum, WORLD_ORIGIN, { 0,0,0,0 }, BLACK);
             EndDrawing();
+
+
         }
 
         // Cleanup

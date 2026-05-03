@@ -50,7 +50,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
 
     // TODO: potential optimization to minimize list traversal - combine size check?
     if (evictableList.empty() || !canFitInCacheWithEviction(fileSize)) {
-        throw NoSpaceInCacheError(path);
+        throw NoSpaceInCacheError(path, fileSize);
     }
 
     uintmax_t emptySpaceInCache = CACHE_CAPACITY - getCurrentUsage();
