@@ -28,7 +28,7 @@ protected:
     }
 
     // Proxy method: RegistryTest is a friend, so it can call the private method
-    bool DebugCanFitInCacheWithEviction(uintmax_t const fileSize) const {
+    bool DebugCanFitInCacheWithEviction(uint64_t const fileSize) const {
         return registry.canFitInCacheWithEviction(fileSize);
     }
     std::list<fs::path> DebugTryGetEvictableList() {

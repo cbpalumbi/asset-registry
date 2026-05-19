@@ -74,7 +74,7 @@ private:
         assetRefs[path] = result.value();
 
         const auto bytes = result.value()->data();
-        Image img = LoadImageFromMemory(".png",
+        const Image img = LoadImageFromMemory(".png",
             reinterpret_cast<const unsigned char*>(bytes.data()),
             static_cast<int>(bytes.size()));
         gpuTextures[path] = LoadTextureFromImage(img);

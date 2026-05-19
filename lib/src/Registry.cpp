@@ -54,7 +54,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
         throw NoSpaceInCacheError(path, fileSize);
     }
 
-    uintmax_t emptySpaceInCache = CACHE_CAPACITY - getCurrentUsage();
+    uint64_t emptySpaceInCache = CACHE_CAPACITY - getCurrentUsage();
     for (auto it = evictableList.rbegin(); it != evictableList.rend(); ++it) {
         // evict the item
         emptySpaceInCache += evictAssetByPath(*it);;
@@ -67,7 +67,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
 }
 
 
-std::optional<std::shared_ptr<AssetRef>> Registry::loadIntoCache(fs::path const &path, uintmax_t filesize) {
+std::optional<std::shared_ptr<AssetRef>> Registry::loadIntoCache(fs::path const &path, uint64_t filesize) {
 
     // determine the size of the file
     auto fileSize = std::filesystem::file_size(path);
@@ -94,11 +94,11 @@ std::optional<std::shared_ptr<AssetRef>> Registry::loadIntoCache(fs::path const 
     return ref;
 }
 
-bool Registry::canFitInCacheWithoutEviction(const uintmax_t fileSize) const {
+bool Registry::canFitInCacheWithoutEviction(const uint64_t fileSize) const {
     return CACHE_CAPACITY - getCurrentUsage() >= fileSize;
 }
 
-bool Registry::canFitInCacheWithEviction(const uintmax_t fileSize) const {
+bool Registry::canFitInCacheWithEviction(const uint64_t fileSize) const {
     const uint32_t evictableBytes = getSizeOfEvictableBytes();
     const uint32_t nonEvictableBytes = getCurrentUsage() - evictableBytes;
     return CACHE_CAPACITY - nonEvictableBytes >= fileSize;
@@ -125,8 +125,8 @@ std::vector<std::string> Registry::getCurrentEntryNames() const {
     return names;
 }
 
-uintmax_t Registry::getSizeOfEvictableBytes() const {
-    uintmax_t sum = 0;
+uint64_t Registry::getSizeOfEvictableBytes() const {
+    uint64_t sum = 0;
     for (auto p : lruList) {
         sum += entries.at(p)->assetSize;
     }
@@ -140,7 +140,7 @@ std::optional<std::shared_ptr<AssetEntry>> Registry::getEntryByPath(fs::path con
     return std::nullopt;
 }
 
-uintmax_t Registry::evictAssetByPath(fs::path const &path) {
+uint64_t Registry::evictAssetByPath(fs::path const &path) {
     if (entries.contains(path)) {
         const auto entry = entries[path];
         return evictAsset(entry);
@@ -148,7 +148,7 @@ uintmax_t Registry::evictAssetByPath(fs::path const &path) {
     return 0;
 }
 
-uintmax_t Registry::evictAsset(std::shared_ptr<AssetEntry> entry) {
+uint64_t Registry::evictAsset(std::shared_ptr<AssetEntry> entry) {
     // for the evicted assets, follow the AssetEntry to their AssetRefs and invalidate them.
     entry->invalidateRefs();
 
