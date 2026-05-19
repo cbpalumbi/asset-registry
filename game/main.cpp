@@ -45,61 +45,6 @@ bool isInFrustum(const Frustum& frustum, Vector2 objectPos, float objectRadius =
     return dot >= cosHalf - (objectRadius / dist);
 }
 
-void drawFrustum(const Frustum& frustum, Vector2 worldOrigin) {
-    Vector2 screenOrigin = {
-        frustum.origin.x + worldOrigin.x,
-        frustum.origin.y + worldOrigin.y
-    };
-
-    // Angle of the facing direction
-    float baseAngle = atan2f(frustum.direction.y, frustum.direction.x);
-
-    // The two cone edge endpoints
-    float leftAngle  = baseAngle - frustum.halfAngle;
-    float rightAngle = baseAngle + frustum.halfAngle;
-
-    Vector2 leftEdge  = { screenOrigin.x + cosf(leftAngle)  * frustum.range,
-                          screenOrigin.y + sinf(leftAngle)  * frustum.range };
-    Vector2 rightEdge = { screenOrigin.x + cosf(rightAngle) * frustum.range,
-                          screenOrigin.y + sinf(rightAngle) * frustum.range };
-
-    Color coneColor = { 255, 255, 0, 80 };  // translucent yellow
-
-    // Filled triangle fan approximating the cone
-    int arcSegments = 20;
-    for (int i = 0; i < arcSegments; i++) {
-        float t0 = (float)i       / arcSegments;
-        float t1 = (float)(i + 1) / arcSegments;
-        float a0 = leftAngle + t0 * (rightAngle - leftAngle);
-        float a1 = leftAngle + t1 * (rightAngle - leftAngle);
-
-        Vector2 p0 = { screenOrigin.x + cosf(a0) * frustum.range,
-                       screenOrigin.y + sinf(a0) * frustum.range };
-        Vector2 p1 = { screenOrigin.x + cosf(a1) * frustum.range,
-                       screenOrigin.y + sinf(a1) * frustum.range };
-
-        DrawTriangle(screenOrigin, p0, p1, coneColor);
-    }
-
-    // Outline
-    DrawLineV(screenOrigin, leftEdge,  YELLOW);
-    DrawLineV(screenOrigin, rightEdge, YELLOW);
-
-    // Arc along the far edge
-    for (int i = 0; i < arcSegments; i++) {
-        float t0 = (float)i       / arcSegments;
-        float t1 = (float)(i + 1) / arcSegments;
-        float a0 = leftAngle + t0 * (rightAngle - leftAngle);
-        float a1 = leftAngle + t1 * (rightAngle - leftAngle);
-
-        Vector2 p0 = { screenOrigin.x + cosf(a0) * frustum.range,
-                       screenOrigin.y + sinf(a0) * frustum.range };
-        Vector2 p1 = { screenOrigin.x + cosf(a1) * frustum.range,
-                       screenOrigin.y + sinf(a1) * frustum.range };
-        DrawLineV(p0, p1, YELLOW);
-    }
-}
-
 Texture2D makeGrayscaleTexture(const std::string& path) {
     Image img = LoadImage(path.c_str());
     ImageFormat(&img, PIXELFORMAT_UNCOMPRESSED_R8G8B8A8); // ensure we have alpha
