@@ -1,3 +1,4 @@
+**WORK-IN-PROGRESS**
 **Overview**
 
 This project is a C++ in-memory asset registry library. Callers request assets by path and receive back a handle. Behind the scenes, an LRU cache controls which assets are resident in memory using reference-counted ownership. 
