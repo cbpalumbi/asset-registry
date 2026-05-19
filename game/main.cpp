@@ -203,8 +203,6 @@ int main() {
         // Render texture to draw the whole scene into before applying shader
         RenderTexture2D renderTarget = LoadRenderTexture(768, 432);
 
-        std::unordered_set<std::string> inFrustumLastFrame;
-
         while (!WindowShouldClose()) {
             float dt = GetFrameTime();
             updatePlayer(player, dt);
@@ -218,41 +216,31 @@ int main() {
             frustum.halfAngle = 35.0f * DEG2RAD;
             frustum.range     = 200.0f;
 
-            // Build canonical path map once per frame
+            // Build canonical frustum set for this frame
             std::unordered_map<std::string, fs::path> canonicalPaths;
-            for (const auto& [position, assetPath] : world)
-                canonicalPaths[assetPath] = fs::weakly_canonical(assetsAbsolutePath + assetPath);
-
-            // Build frustum membership sets
-            std::unordered_set<std::string> inFrustumThisFrame;
-            std::unordered_map<std::string, bool> outsideThisFrame;
+            std::unordered_set<fs::path> inFrustumThisFrame;
 
             for (const auto& [position, assetPath] : world) {
-                const std::string canonical = canonicalPaths[assetPath].string();
+                fs::path canonical = fs::weakly_canonical(assetsAbsolutePath + assetPath);
+                canonicalPaths[assetPath] = canonical;
                 if (isInFrustum(frustum, position))
                     inFrustumThisFrame.insert(canonical);
-                else
-                    outsideThisFrame[canonical] = true;
             }
 
-            // Release cache entries that just left the frustum
-            for (const auto& path : inFrustumLastFrame) {
-                if (!inFrustumThisFrame.contains(path))
-                    textureCache.release(path);
-            }
+            // One call handles all loads and evictions automatically
+            textureCache.update(inFrustumThisFrame);
 
-            // Unload gray textures that just entered the frustum
+            // Gray textures for out-of-frustum objects
             for (auto it = grayTextures.begin(); it != grayTextures.end(); ) {
-                if (!outsideThisFrame.contains(it->first)) {
+                if (inFrustumThisFrame.contains(fs::path(it->first))) {
                     UnloadTexture(it->second);
                     it = grayTextures.erase(it);
                 } else { ++it; }
             }
-
-            // Load gray textures for newly outside objects
-            for (const auto& [path, _] : outsideThisFrame) {
-                if (!grayTextures.contains(path))
-                    grayTextures[path] = makeGrayscaleTexture(path);
+            for (const auto& [assetPath, canonical] : canonicalPaths) {
+                const std::string canonStr = canonical.string();
+                if (!inFrustumThisFrame.contains(canonical) && !grayTextures.contains(canonStr))
+                    grayTextures[canonStr] = makeGrayscaleTexture(canonStr);
             }
 
 
@@ -283,18 +271,14 @@ int main() {
                         position.y + WORLD_ORIGIN.y
                     };
 
-                    if (isInFrustum(frustum, position)) {
-                        if (!inFrustumLastFrame.contains(fullPathStr))
-                            textureCache.get(fullPath);
-                        DrawTexture(textureCache.peek(fullPath), screenPos.x, screenPos.y, WHITE);
+                    if (inFrustumThisFrame.contains(fullPath)) {
+                        DrawTexture(textureCache.get(fullPath), screenPos.x, screenPos.y, WHITE);
                     } else {
                         DrawTexture(grayTextures[fullPathStr], screenPos.x, screenPos.y, WHITE);
                     }
                 }
                 drawPlayer(player, WORLD_ORIGIN);
             EndTextureMode();
-
-            inFrustumLastFrame = inFrustumThisFrame;
 
             // --- Composite render texture to screen through shader ---
             BeginDrawing();
