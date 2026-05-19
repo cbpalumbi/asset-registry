@@ -39,7 +39,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
 
     // otherwise, attempt to load into cache normally
     if (canFitInCacheWithoutEviction(fileSize)) {
-        auto assetRef = loadIntoCache(path);
+        auto assetRef = loadIntoCache(path, fileSize);
         if (!assetRef) {
             throw CacheError("An error occurred when loading the asset into the cache.");
         }
@@ -63,11 +63,11 @@ std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
         if (emptySpaceInCache >= fileSize) break;
     }
 
-    return loadIntoCache(path);
+    return loadIntoCache(path, fileSize);
 }
 
 
-std::optional<std::shared_ptr<AssetRef>> Registry::loadIntoCache(fs::path const &path) {
+std::optional<std::shared_ptr<AssetRef>> Registry::loadIntoCache(fs::path const &path, uintmax_t filesize) {
 
     // determine the size of the file
     auto fileSize = std::filesystem::file_size(path);

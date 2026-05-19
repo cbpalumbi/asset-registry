@@ -26,7 +26,7 @@ private:
     // IMPORTANT: BACK of the list represents the next asset to evict.
     std::list<fs::path> lruList;
 
-    std::optional<std::shared_ptr<AssetRef>> loadIntoCache(fs::path const &path);
+    std::optional<std::shared_ptr<AssetRef>> loadIntoCache(fs::path const &path, uintmax_t fileSize);
     [[nodiscard]] bool canFitInCacheWithoutEviction(uintmax_t fileSize) const;
     [[nodiscard]] bool canFitInCacheWithEviction(uintmax_t fileSize) const;
     std::list<fs::path> tryGetEvictableList();
