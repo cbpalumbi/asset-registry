@@ -7,6 +7,7 @@ It's a small-scale implementation of the streaming patterns you'd find in larger
 
 **Video**
 As the character moves around the world, assets in view are loaded in using the cache. If the cache is full, eviction will occur based on an LRU policy. 
+
 https://github.com/user-attachments/assets/4c16547b-4bf7-4486-853f-209b27095724
 
 **Technical Details**
