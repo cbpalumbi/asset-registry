@@ -3,7 +3,7 @@
 **Overview**
 
 This project is a C++ in-memory asset registry library. Callers request assets by path and receive back a handle. Behind the scenes, an LRU cache controls which assets are resident in memory using reference-counted ownership. 
-When handles go out of scope, the asset registry releases their memory automatically via RAII. 
+When handles go out of scope, the asset registry decrements their reference count automatically via RAII. 
 The eviction policy is LRU (in this context, least recently freed) implemented with a doubly linked list paired with a hashmap of per-entry iterators for O(1) insertion and removal.
 Built with modern C++ features including std::optional, std::span, std::views, std::filesystem, std::enable_shared_from_this, and RAII throughout, with a full unit test suite written in gTest.
 
