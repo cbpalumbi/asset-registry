@@ -13,7 +13,7 @@ It's a small-scale implementation of the streaming patterns you'd find in larger
 
 **Video**
 
-As the character moves around the world, assets in view are loaded in using the cache. If the cache is full, eviction will occur based on an LRU policy. 
+As the character moves around the world, assets in view are loaded in using the cache. If the cache is full, eviction will occur based on an LRU policy. For a point of reference, the biggest rock is Rock1.png.
 
 https://github.com/user-attachments/assets/8b65619c-1428-4e11-91c4-4e9a78c1e903
 
