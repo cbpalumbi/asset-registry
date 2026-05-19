@@ -9,7 +9,7 @@
 class RegistryTest : public ::testing::Test {
 protected:
     std::filesystem::path tempFile = "test_asset.bin";
-    Registry registry;
+    Registry registry{8000};
 
     void SetUp() override {
         std::ofstream f(tempFile, std::ios::binary);
@@ -86,12 +86,12 @@ TEST_F(RegistryTest, Load_SameAssetAgain_ReturnsNewAssetRef) {
 }
 
 TEST_F(RegistryTest, Load_WithTooLargeFile_ReturnsNullopt) {
-    const auto file = createSizedFile("file1.cache_tmp", registry.CACHE_CAPACITY + 1);
+    const auto file = createSizedFile("file1.cache_tmp", registry.cacheCapacity + 1);
     EXPECT_THROW(registry.load(file), AssetSizeExceedsCacheCapacityError);
 }
 
 TEST_F(RegistryTest, Load_AssetWithSizeEqualToCacheCapacity_Succeeds) {
-    const auto file1 = createSizedFile("file1.cache_tmp", registry.CACHE_CAPACITY);
+    const auto file1 = createSizedFile("file1.cache_tmp", registry.cacheCapacity);
 
     const auto ref1 = registry.load(file1);
 
@@ -99,7 +99,7 @@ TEST_F(RegistryTest, Load_AssetWithSizeEqualToCacheCapacity_Succeeds) {
 }
 
 TEST_F(RegistryTest, Load_WhenEvictionImpossible_ReturnsNullopt) {
-    const auto file1 = createSizedFile("file1.cache_tmp", registry.CACHE_CAPACITY);
+    const auto file1 = createSizedFile("file1.cache_tmp", registry.cacheCapacity);
     const auto file2 = createSizedFile("file2.cache_tmp", 1);
 
     const auto ref1 = registry.load(file1);
@@ -128,7 +128,7 @@ TEST_F(RegistryTest, Load_SameAssetAfterEviction_ReloadsAsset) {
 }
 
 TEST_F(RegistryTest, Load_WithEviction_LoadsNewAsset) {
-    const size_t halfCap = registry.CACHE_CAPACITY / 2;
+    const size_t halfCap = registry.cacheCapacity / 2;
     const auto file1 = createSizedFile("evict_room_a.cache_tmp", halfCap);
     const auto file2 = createSizedFile("evict_room_b.cache_tmp", halfCap + 1);
 
@@ -140,13 +140,13 @@ TEST_F(RegistryTest, Load_WithEviction_LoadsNewAsset) {
 }
 
 TEST_F(RegistryTest, Load_WithEviction_EvictsLeastRecentlyFreedAsset) {
-    const size_t thirdCap = registry.CACHE_CAPACITY / 3;
+    const size_t thirdCap = registry.cacheCapacity / 3;
     const std::string path_a_name = "lru_order_a.cache_tmp";
     const std::string path_b_name = "lru_order_b.cache_tmp";
     const auto fileA = createSizedFile(path_a_name, thirdCap);
     const auto fileB = createSizedFile(path_b_name, thirdCap);
 
-    const size_t halfCap = registry.CACHE_CAPACITY / 2;
+    const size_t halfCap = registry.cacheCapacity / 2;
     const auto fileC = createSizedFile("lru_order_c.cache_tmp", halfCap);
 
     // release fileA first, then fileB
@@ -164,7 +164,7 @@ TEST_F(RegistryTest, Load_WithEviction_EvictsLeastRecentlyFreedAsset) {
 }
 
 TEST_F(RegistryTest, Load_WithMultipleEvictionsNeeded_EvictsOnlyEnoughToFitNewAsset) {
-    const size_t fifthCap = registry.CACHE_CAPACITY / 5;
+    const size_t fifthCap = registry.cacheCapacity / 5;
     const auto fileA = createSizedFile("itemA.cache_tmp", fifthCap);
     const auto fileB = createSizedFile("itemB.cache_tmp", fifthCap);
     const auto fileC = createSizedFile("itemC.cache_tmp", fifthCap);
@@ -180,7 +180,7 @@ TEST_F(RegistryTest, Load_WithMultipleEvictionsNeeded_EvictsOnlyEnoughToFitNewAs
     { const auto refD = registry.load(fileD); }
     { const auto refE = registry.load(fileE); }
 
-    const size_t fourFifthsCap = registry.CACHE_CAPACITY * 3 / 5;
+    const size_t fourFifthsCap = registry.cacheCapacity * 3 / 5;
     const auto fileF = createSizedFile("itemF.cache_tmp", fourFifthsCap);
 
     const auto ref = registry.load(fileF);
@@ -196,7 +196,7 @@ TEST_F(RegistryTest, Load_WithMultipleEvictionsNeeded_EvictsOnlyEnoughToFitNewAs
 
 TEST_F(RegistryTest, Load_WithEviction_EvictsLeastRecentlyFreedFirst) {
     // fill cache with three third-sized assets
-    const size_t thirdCap = registry.CACHE_CAPACITY / 3;
+    const size_t thirdCap = registry.cacheCapacity / 3;
     const auto fileA = createSizedFile("evict_order_a.cache_tmp", thirdCap);
     const auto fileB = createSizedFile("evict_order_b.cache_tmp", thirdCap);
     const auto fileC = createSizedFile("evict_order_c.cache_tmp", thirdCap);
@@ -243,7 +243,7 @@ TEST_F(RegistryTest, CanFitInCacheWithEviction_WhenRegistryEmpty_ReturnsTrue) {
 }
 
 TEST_F(RegistryTest, CanFitInCacheWithEviction_WhenMultipleFilesCanFit_ReturnsTrue) {
-    const size_t quarterCap = registry.CACHE_CAPACITY / 4;
+    const size_t quarterCap = registry.cacheCapacity / 4;
     const auto file1 = createSizedFile("file1.cache_tmp", quarterCap);
     const auto file2 = createSizedFile("file2.cache_tmp", quarterCap);
 
@@ -253,7 +253,7 @@ TEST_F(RegistryTest, CanFitInCacheWithEviction_WhenMultipleFilesCanFit_ReturnsTr
 }
 
 TEST_F(RegistryTest, CanFitInCacheWithEviction_WhenNewFileHitsCapacityExactly_ReturnsTrue) {
-    const size_t halfCap = registry.CACHE_CAPACITY / 2;
+    const size_t halfCap = registry.cacheCapacity / 2;
     const auto file1 = createSizedFile("half1.cache_tmp", halfCap);
     const auto file2 = createSizedFile("half2.cache_tmp", halfCap);
 
@@ -274,7 +274,7 @@ TEST_F(RegistryTest, TryGetEvictableList_WhenNothingInRegistry_ReturnsEmpty) {
 }
 
 TEST_F(RegistryTest, TryGetEvictableList_WhenAllRefsHeld_ReturnsEmpty) {
-    const size_t halfCap = registry.CACHE_CAPACITY / 2;
+    const size_t halfCap = registry.cacheCapacity / 2;
     const auto file1 = createSizedFile("held1.cache_tmp", halfCap);
 
     // Hold the ref — keeps logical ref count at 1, not evictable
@@ -284,7 +284,7 @@ TEST_F(RegistryTest, TryGetEvictableList_WhenAllRefsHeld_ReturnsEmpty) {
 }
 
 TEST_F(RegistryTest, TryGetEvictableList_WhenAllRefsHaveBeenReleased_ReturnsEmpty) {
-    const size_t halfCap = registry.CACHE_CAPACITY / 2;
+    const size_t halfCap = registry.cacheCapacity / 2;
     const auto file1 = createSizedFile("evictable1.cache_tmp", halfCap);
 
     {
@@ -296,7 +296,7 @@ TEST_F(RegistryTest, TryGetEvictableList_WhenAllRefsHaveBeenReleased_ReturnsEmpt
 }
 
 TEST_F(RegistryTest, TryGetEvictableList_WithLiveRefs_ExcludesThoseEntries) {
-    const size_t thirdCap = registry.CACHE_CAPACITY / 3;
+    const size_t thirdCap = registry.cacheCapacity / 3;
     const auto heldFile = createSizedFile("held_ref.cache_tmp",  thirdCap);
     const auto freeFile = createSizedFile("free_ref.cache_tmp",  thirdCap);
 
@@ -367,7 +367,7 @@ TEST_F(RegistryTest, TryGetEvictableList_WhenRefReleasedThenReloadedThenMovedThe
 }
 
 TEST_F(RegistryTest, TryGetEvictableList_WithMultipleAssetsFreed_LeastRecentlyFreedAssetAtBackOfList) {
-    const size_t thirdCap = registry.CACHE_CAPACITY / 3;
+    const size_t thirdCap = registry.cacheCapacity / 3;
     const std::string path_a_name = "lru_order_a.cache_tmp";
     const std::string path_b_name = "lru_order_b.cache_tmp";
     const auto fileA = createSizedFile(path_a_name, thirdCap);

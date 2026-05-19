@@ -7,6 +7,7 @@
 class AssetRefTests : public ::testing::Test {
 protected:
     std::filesystem::path tempFile = "test_asset.bin";
+    Registry registry{8000};
 
     void SetUp() override {
         std::ofstream f(tempFile, std::ios::binary);
@@ -20,8 +21,6 @@ protected:
     static std::shared_ptr<AssetEntry> DebugGetEntry(const AssetRef& ref) {
         return ref.assetEntry;
     }
-
-    Registry registry;
 };
 
 #pragma region RaiiDestructor

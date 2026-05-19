@@ -12,10 +12,11 @@ namespace fs = std::filesystem;
 class Registry {
 friend class RegistryTest;
 public:
+explicit Registry(uint64_t cacheCapacity);
     std::optional<std::shared_ptr<AssetRef>> load(fs::path const &path);
     [[nodiscard]] uint32_t getCurrentUsage() const;
     [[nodiscard]] std::vector<std::string> getCurrentEntryNames() const;
-    const uint32_t CACHE_CAPACITY = 8000;
+    uint32_t cacheCapacity = 8000; // in bytes
 private:
 
     std::unordered_map<fs::path, std::shared_ptr<AssetEntry>> entries;

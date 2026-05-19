@@ -9,6 +9,8 @@ bool isValidPath(const fs::path& p) {
     return fs::exists(p) && !fs::is_directory(p);
 }
 
+Registry::Registry(const uint64_t cacheCapacity) : cacheCapacity(cacheCapacity) {}
+
 std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
 
     if (!isValidPath(path)) {
@@ -33,7 +35,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
     }
 
     const auto fileSize = std::filesystem::file_size(path);
-    if (fileSize > CACHE_CAPACITY) {
+    if (fileSize > cacheCapacity) {
         throw AssetSizeExceedsCacheCapacityError(path);
     }
 
@@ -54,7 +56,7 @@ std::optional<std::shared_ptr<AssetRef>> Registry::load(fs::path const &path) {
         throw NoSpaceInCacheError(path, fileSize);
     }
 
-    uint64_t emptySpaceInCache = CACHE_CAPACITY - getCurrentUsage();
+    uint64_t emptySpaceInCache = cacheCapacity - getCurrentUsage();
     for (auto it = evictableList.rbegin(); it != evictableList.rend(); ++it) {
         // evict the item
         emptySpaceInCache += evictAssetByPath(*it);;
@@ -95,13 +97,13 @@ std::optional<std::shared_ptr<AssetRef>> Registry::loadIntoCache(fs::path const 
 }
 
 bool Registry::canFitInCacheWithoutEviction(const uint64_t fileSize) const {
-    return CACHE_CAPACITY - getCurrentUsage() >= fileSize;
+    return cacheCapacity - getCurrentUsage() >= fileSize;
 }
 
 bool Registry::canFitInCacheWithEviction(const uint64_t fileSize) const {
     const uint32_t evictableBytes = getSizeOfEvictableBytes();
     const uint32_t nonEvictableBytes = getCurrentUsage() - evictableBytes;
-    return CACHE_CAPACITY - nonEvictableBytes >= fileSize;
+    return cacheCapacity - nonEvictableBytes >= fileSize;
 }
 
 std::list<fs::path> Registry::tryGetEvictableList() {

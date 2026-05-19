@@ -126,7 +126,8 @@ int main() {
     player.facingLeft = false;
 
     try {
-        Registry registry;
+        constexpr uint64_t CAPACITY = 8000;
+        Registry registry{CAPACITY};
         TextureCache textureCache(registry);
         const auto world = createWorld();
         std::unordered_map<std::string, Texture2D> grayTextures;
@@ -247,7 +248,7 @@ int main() {
                 int boxHeight = 20 + (cacheEntries.size() * lineHeight);
                 DrawRectangle(hudX - 6, hudY - 4, 260, boxHeight, { 0, 0, 0, 160 });
 
-                std::string header = "TextureCache (" + std::to_string(cacheUsage) + " bytes)";
+                std::string header = "TextureCache (" + std::to_string(cacheUsage) + " / " + std::to_string(CAPACITY) + " bytes)";
                 DrawText(header.c_str(), hudX, hudY, fontSize, YELLOW);
                 hudY += 18;
 
